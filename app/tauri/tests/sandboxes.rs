@@ -510,6 +510,7 @@ mod positive {
         jetbrains_unknown_app_installed => "jetbrains-unknown-app-installed",
         jetbrains_unknown_app_open => "jetbrains-unknown-app-open",
         large_files => "large-files",
+        largest_folders => "largest-folders",
         local_ai_models => "local-ai-models",
         local_ai_models_lm_studio_open => "local-ai-models-lm-studio-open",
         local_ai_models_ollama => "local-ai-models-ollama",

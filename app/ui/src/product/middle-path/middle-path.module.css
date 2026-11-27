@@ -1,0 +1,18 @@
+/* A path cut in the middle: the head gives way first, the tail keeps its width. */
+@layer components {
+  .path {
+    display: inline-flex;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .head {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tail {
+    flex: none;
+  }
+}

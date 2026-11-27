@@ -15,6 +15,7 @@ impl Tree {
     pub(crate) fn apply(&mut self, batch: &FolderBatch, created: &mut Vec<NodeIndex>) -> Result<(), TreeError> {
         let folder = batch.folder;
         self.add_own(folder, batch.folded)?;
+        self.join_newest(folder, batch.newest)?;
         if batch.incomplete {
             self.mark(folder, Flag::Incomplete)?;
         }

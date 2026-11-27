@@ -23,7 +23,8 @@ use std::path::{Path, PathBuf};
 use fresher_core::{
     Artifact, CategoryDescriptor, CategoryIcon, CategoryId, Claim, DaySetting, DescriptorError, FindingSink, IdError,
     Interest, InterestError, Locales, Match, Module, ModuleContext, ModuleDescriptor, ModuleError, ModuleGroup,
-    ModuleId, Pattern, Project, ProjectKind, SettingError, Sizes, TextKeyError, Timestamp,
+    ModuleId, Pattern, Project, ProjectKind, STALE_PROJECTS_MODULE, STALE_PROJECTS_UNUSED_FOR, SettingError, Sizes,
+    TextKeyError, Timestamp,
 };
 
 use crate::categories::Category;
@@ -34,8 +35,8 @@ use crate::report::{Categories, Item, Report, Where};
 pub use crate::table::ArtifactsError;
 use crate::table::{Artifacts, Row};
 
-/// `stale-projects.unused-for-days`. Never fewer than a month: a project is not stale the week after you left it.
-const UNUSED_FOR: DaySetting = DaySetting::new("unused-for-days", 30, 3650, 365);
+/// `stale-projects.unused-for-days`, declared in the core: the engine reads it too.
+const UNUSED_FOR: DaySetting = STALE_PROJECTS_UNUSED_FOR;
 
 /// The days without a build after which Rust's build cache is offered: the user's decision of 2026-11-19, not a
 /// setting.
@@ -79,7 +80,7 @@ impl StaleProjectsModule {
     ///
     /// A [`StaleProjectsError`] when one of its own constants or its table is invalid: a bug, which its tests catch.
     pub fn new() -> Result<Self, StaleProjectsError> {
-        let id = ModuleId::new("stale-projects")?;
+        let id = ModuleId::new(STALE_PROJECTS_MODULE)?;
         let categories = Categories::new(|category| {
             Ok(CategoryDescriptor::new(CategoryId::new(id, category.id())?, category.danger())
                 .with_icon(CategoryIcon::Project))

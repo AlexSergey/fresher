@@ -11,6 +11,10 @@
 //! The owners are not copied: the scan's claims are committed again. The times and the inside of a node with hits
 //! follow its modification time: kept from the cached tree, or taken from the listing read again; a folder walked
 //! again gets its inside from that walk.
+//!
+//! A copied folder keeps its cached newest change; a folder read again takes its new listing's, and one walked again
+//! its walk's. The patched tree's `freeze` joins what is below into every ancestor, so an ancestor is never older than
+//! the truth: it may look newer, when what made it newest went, until the next full scan.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -184,6 +188,7 @@ impl Builder<'_> {
         self.new.set_flags(task.new, flags)?;
         self.new.set_own(task.new, self.frozen.own(task.old))?;
         self.new.add_hidden_folders(task.new, self.frozen.hidden(task.old))?;
+        self.new.join_newest(task.new, node.newest)?;
         if task.fresh.is_none() {
             self.new.set_modified(task.new, node.modified())?;
             self.keep_access(task)?;

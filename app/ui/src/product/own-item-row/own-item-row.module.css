@@ -15,6 +15,12 @@
     text-overflow: ellipsis;
   }
 
+  /* The kind, the place and the date on one line; the place gives way first. */
+  .meta {
+    display: flex;
+    white-space: pre;
+  }
+
   /* The empty place of the checkbox (16 px) on a row that cannot be chosen. */
   .noCheckbox {
     display: inline-block;

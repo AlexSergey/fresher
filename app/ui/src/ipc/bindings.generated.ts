@@ -851,7 +851,7 @@ export type KindCount = { kind: ItemKind, count: number, };
 export type PlaceCount = { folder: NodeInfo, count: number, };
 
 /**
- * One page of the folder view.
+ * One page of Browse.
  */
 export type OwnPlace = { 
 /**
@@ -860,7 +860,8 @@ export type OwnPlace = {
 path: Array<NodeInfo>, rows: Array<OwnRow>, offset: number, total: number, };
 
 /**
- * One row of the folder view.
+ * One row of Browse, read-only: nothing on it is picked. `offer` says why the row is not on Files (or why it does not
+ * open), `opens` whether it opens to its children.
  */
 export type OwnRow = { node: NodeInfo, 
 /**
@@ -870,7 +871,67 @@ explained: Sizes, kind: ItemKind, offer: Offer,
 /**
  * Whether the row opens to its children.
  */
-opens: boolean, picked: FindingId | null, };
+opens: boolean, };
+
+/**
+ * One page of the Folders list. Only where to start: the rule takes its size and age from the settings.
+ */
+export type FoldersQuery = { offset: number, 
+/**
+ * At most `MAX_PAGE`; the engine caps a larger one.
+ */
+limit: number, };
+
+/**
+ * The answer to a `FoldersQuery`.
+ */
+export type FoldersPage = { rows: Array<FolderRow>, offset: number, 
+/**
+ * How many folders are listed, in all.
+ */
+total: number, 
+/**
+ * The sizes of every folder listed.
+ */
+sizes: Sizes, 
+/**
+ * How many of them are projects.
+ */
+projects: number, 
+/**
+ * The home's sizes, for the bar.
+ */
+home: Sizes, 
+/**
+ * The smallest size listed (the setting's value).
+ */
+minSize: ByteSize, 
+/**
+ * The days nothing in a listed folder changed, at least (the stale projects' setting).
+ */
+days: number, };
+
+/**
+ * One folder left alone.
+ */
+export type FolderRow = { node: NodeInfo, 
+/**
+ * The folder it is in, as a path from the home, for display (`~`, `~/Code`).
+ */
+place: string, 
+/**
+ * The newest change of anything inside it.
+ */
+newest: Timestamp, leftFor: LeftFor, 
+/**
+ * It holds a `.git` folder.
+ */
+project: boolean, };
+
+/**
+ * How long nothing in a folder changed, as the row says it: months under two years, then years.
+ */
+export type LeftFor = { "unit": "months", "count": number } | { "unit": "years", "count": number };
 
 /**
  * What the user picked for removal, as the UI sends it: ids only, never a path.

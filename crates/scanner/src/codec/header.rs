@@ -14,8 +14,8 @@ use crate::codec::varint::{Reader, write_u64};
 /// 2: every node carries its access (plan 006/05/01). 3: a node's flags carry the kind `Other` (plan 017/01/02).
 /// 4: a node with hits carries its status change, its access and its inside (plan 017/01/03). 5: an inside carries
 /// whether a lock file's name is in it (plan 017/02/02). 6: a hit carries which of its interest's held names its folder
-/// holds (plan 018/01/01).
-pub(crate) const TREE_FORMAT: u16 = 6;
+/// holds (plan 018/01/01). 7: every record carries its newest change, a delta from its parent's (plan 044/01/02).
+pub(crate) const TREE_FORMAT: u16 = 7;
 
 /// What a saved tree is of.
 #[derive(Clone, Debug, PartialEq, Eq)]

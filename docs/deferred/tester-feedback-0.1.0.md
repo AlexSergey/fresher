@@ -23,15 +23,16 @@ go with the last one.
    step in sight once something is ticked, or a hint on the first tick (mockup first).
 2. **Where the rest of the disk went.** The tester could clean 5–6 GB at most while the disk was nearly full, and did
    not know where the rest went. The storage map (plan [012](../plans/012-storage-map/readme.md)) and the Largest
-   screen answer part of it, but the tester did not reach them from the result. Leads:
+   screen answer part of it, but the tester did not reach them from the result. Largest's Folders (plan
+   [044](../plans/044-largest-folders/readme.md)) answers part of it too: the big folders left alone. The line on the
+   scan's result is still open. Leads:
    [Intelligent Storage Explainer](../ideas/storage-explainer.md), [System Data Analyzer](../ideas/system-data-analyzer.md),
    and a line on the scan's result that says how much of the used space it explains and where to look for the rest.
 3. **Data of AI coding assistants and the projects they leave behind**: a new idea,
    [AI coding assistants' data](../ideas/ai-coding-assistants-data.md).
 4. **Big projects not changed for a long time, whoever made them** (the user's addition): a new idea,
-   [Big projects left alone](../ideas/big-stale-projects.md), drafted as plan
-   [044](../plans/044-largest-folders/readme.md) after [043](../plans/043-build-flags/readme.md) turns Largest and
-   High back on.
+   [Big projects left alone](../ideas/big-stale-projects.md), taken by plan
+   [044](../plans/044-largest-folders/readme.md) (Largest's Folders, Show in Finder only).
 5. **Other accounts, more tools, many small places** (the tester's second message): new ideas
    [Other users on the Mac](../ideas/other-users-on-the-mac.md), [.NET and NuGet packages](../ideas/dotnet-nuget-packages.md)
    and [Many small places that add up](../ideas/many-small-places.md).

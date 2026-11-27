@@ -1,6 +1,9 @@
 import type {
   Dictionary,
   Finding,
+  FolderRow,
+  FoldersPage,
+  FoldersQuery,
   ItemKind,
   LargestPage,
   LargestQuery,
@@ -168,6 +171,107 @@ export const LARGEST_PAGE: LargestPage = largestPageOf({
   offset: 0,
   place: null,
   unchanged: 'any',
+});
+
+type FolderSpec = {
+  readonly bytes: number;
+  readonly index: number;
+  readonly leftFor: FolderRow['leftFor'];
+  readonly name: string;
+  readonly place: string;
+  readonly project: boolean;
+};
+
+const FOLDER_SPECS: readonly FolderSpec[] = [
+  {
+    bytes: 16 * GB,
+    index: 201,
+    leftFor: { count: 3, unit: 'years' },
+    name: 'Archive',
+    place: '~',
+    project: false,
+  },
+  {
+    bytes: 13 * GB,
+    index: 202,
+    leftFor: { count: 14, unit: 'months' },
+    name: 'old-app',
+    place: '~/Code',
+    project: true,
+  },
+  {
+    bytes: 9 * GB,
+    index: 203,
+    leftFor: { count: 2, unit: 'years' },
+    name: 'Renders',
+    place: '~',
+    project: false,
+  },
+  {
+    bytes: 7 * GB,
+    index: 204,
+    leftFor: { count: 18, unit: 'months' },
+    name: 'datasets',
+    place: '~/Work',
+    project: true,
+  },
+  {
+    bytes: 2 * GB,
+    index: 205,
+    leftFor: { count: 5, unit: 'months' },
+    name: 'old-export',
+    place: '~/Public',
+    project: false,
+  },
+];
+
+const folderRowOf = (spec: FolderSpec): FolderRow => ({
+  leftFor: spec.leftFor,
+  newest: OLD,
+  node: nodeOf({ ...spec, kind: 'folder', modified: OLD, node: 'folder', offer: OFFERED }),
+  place: spec.place,
+  project: spec.project,
+});
+
+const FOLDER_ROWS: FolderRow[] = FOLDER_SPECS.map(folderRowOf);
+
+// The folders of the home left alone, as `get_largest_folders` answers the first page: five folders, two of them
+// projects, largest first, with the home's sizes for the bar.
+export const FOLDERS: FoldersPage = {
+  days: 365,
+  home: sized(212 * GB),
+  minSize: GB,
+  offset: 0,
+  projects: 2,
+  rows: FOLDER_ROWS,
+  sizes: sized(FOLDER_SPECS.reduce((sum, { bytes }) => sum + bytes, 0)),
+  total: FOLDER_ROWS.length,
+};
+
+// The five folders, then `extra` smaller ones of a project each, for the bar's rest and the paging.
+export const manyFolders = (extra: number): readonly FolderRow[] => [
+  ...FOLDER_ROWS,
+  ...Array.from({ length: extra }, (_, at) =>
+    folderRowOf({
+      bytes: (1_000 - at) * MB,
+      index: 1_200 + at,
+      leftFor: { count: 13, unit: 'months' },
+      name: `folder-${String(at + 1)}`,
+      place: '~/Work',
+      project: true,
+    }),
+  ),
+];
+
+// What `get_largest_folders` answers for a query over `rows`: the page, the total, the sizes and the projects of every
+// row, with `FOLDERS`' home and rule.
+export const foldersPageOf = ({ limit, offset }: FoldersQuery, rows: readonly FolderRow[]): FoldersPage => ({
+  ...FOLDERS,
+  offset,
+  projects: rows.filter(({ project }) => project).length,
+  rows: rows.slice(offset, offset + limit),
+  sizes: sized(rows.reduce((sum, { node }) => sum + node.sizes.allocated, 0)),
+  total: rows.length,
 });
 
 // A list of `count` offered files, each smaller than the one before, for the paging.

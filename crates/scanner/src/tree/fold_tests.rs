@@ -1,4 +1,4 @@
-use fresher_core::{ByteSize, EntryAccess, EntryKind, FolderListing, RawEntry, Sizes};
+use fresher_core::{ByteSize, EntryAccess, EntryKind, FolderListing, RawEntry, Sizes, Timestamp};
 
 use crate::matcher::entry::FolderFacts;
 use crate::tree::arena::Tree;
@@ -22,6 +22,15 @@ fn entry(kind: EntryKind, allocated: u64) -> RawEntry {
         cloud_only: false,
         access: EntryAccess::default(),
         error: None,
+    }
+}
+
+/// A readable entry of `kind` last modified at `modified` seconds and changed at `changed` seconds.
+fn timed(kind: EntryKind, modified: Option<u64>, changed: Option<u64>) -> RawEntry {
+    RawEntry {
+        modified: modified.map(Timestamp::from_secs),
+        changed: changed.map(Timestamp::from_secs),
+        ..entry(kind, 0)
     }
 }
 
@@ -58,9 +67,61 @@ fn apply(tree: &mut Tree, batch: &FolderBatch) -> Vec<NodeIndex> {
 mod negative {
     use fresher_core::{Completeness, EntryKind, RawEntry, ReadError};
 
-    use super::{MIB, apply, batch, clone, entry, hard_link};
+    use super::{MIB, apply, batch, clone, entry, hard_link, timed};
     use crate::tree::TreeError;
     use crate::tree::testing::{rooted, sums};
+
+    const DAY: u64 = 86_400;
+
+    #[test]
+    fn an_entry_that_could_not_be_read_adds_no_time() {
+        let (_, root) = rooted("/home");
+        let broken = RawEntry { error: Some(ReadError::Failed), ..timed(EntryKind::File, Some(900), Some(900)) };
+        let folded = batch(root, &[("broken", broken), ("old", timed(EntryKind::File, Some(100), None))]);
+        assert_eq!(folded.newest, 100);
+    }
+
+    #[test]
+    fn ds_store_is_not_a_change() {
+        let (_, root) = rooted("/home");
+        let folded = batch(
+            root,
+            &[
+                (".DS_Store", timed(EntryKind::File, Some(900), Some(900))),
+                ("a", timed(EntryKind::File, Some(5), None)),
+            ],
+        );
+        assert_eq!(folded.newest, 5);
+        let only = batch(root, &[(".DS_Store", timed(EntryKind::File, Some(900), None))]);
+        assert_eq!(only.newest, i64::MIN);
+    }
+
+    #[test]
+    fn a_subfolders_own_time_is_not_a_change() {
+        let (_, root) = rooted("/home");
+        let folded = batch(
+            root,
+            &[("sub", timed(EntryKind::Folder, Some(900), Some(900))), ("a", timed(EntryKind::File, Some(5), None))],
+        );
+        assert_eq!(folded.newest, 5);
+    }
+
+    #[test]
+    fn a_listing_of_folders_only_has_no_newest() {
+        let (_, root) = rooted("/home");
+        let folded =
+            batch(root, &[("a", timed(EntryKind::Folder, Some(900), Some(900))), ("b", entry(EntryKind::Folder, 0))]);
+        assert_eq!(folded.newest, i64::MIN);
+    }
+
+    #[test]
+    fn a_file_copied_today_with_an_old_modified_is_recent() {
+        let (_, root) = rooted("/home");
+        let now = 1_000 * DAY;
+        let copied = timed(EntryKind::File, Some(now - 400 * DAY), Some(now - DAY));
+        let folded = batch(root, &[("copied", copied)]);
+        assert_eq!(folded.newest, i64::try_from(now - DAY).unwrap());
+    }
 
     #[test]
     fn a_small_file_is_not_kept() {
@@ -141,7 +202,7 @@ mod negative {
 mod positive {
     use fresher_core::{Claim, EntryKind, Pattern, Timestamp};
 
-    use super::{FolderBatch, MIB, apply, batch, entry, hard_link, listing};
+    use super::{FolderBatch, MIB, apply, batch, entry, hard_link, listing, timed};
     use crate::matcher::testing::{compile, interest, set_of};
     use crate::tree::fold::{KEEP_THRESHOLD, fold};
     use crate::tree::node::{Flag, Hit};
@@ -231,6 +292,49 @@ mod positive {
         assert_eq!(tree.sums(created[0]), Some(sums(11, 4196, 4296, 4296)));
         assert_eq!(tree.node(created[0]).unwrap().folders, 4);
         assert_eq!(tree.node(root).unwrap().folders, 5);
+    }
+
+    #[test]
+    fn the_newest_small_file_is_the_batchs_newest() {
+        let (mut tree, root) = rooted("/home");
+        let folded = batch(
+            root,
+            &[
+                ("a", timed(EntryKind::File, Some(10), None)),
+                ("b", timed(EntryKind::File, Some(30), None)),
+                ("c", timed(EntryKind::File, Some(20), None)),
+            ],
+        );
+        assert_eq!(folded.newest, 30);
+        assert_eq!(folded.kept, []);
+        apply(&mut tree, &folded);
+        assert_eq!(tree.newest(root), Some(Timestamp::from_secs(30)));
+    }
+
+    #[test]
+    fn a_kept_file_and_a_link_count_as_changes() {
+        let (_, root) = rooted("/home");
+        let big =
+            fresher_core::RawEntry { modified: Some(Timestamp::from_secs(40)), ..entry(EntryKind::File, 2 * MIB) };
+        let kept = batch(root, &[("big", big), ("small", timed(EntryKind::File, Some(10), None))]);
+        assert_eq!(kept.newest, 40);
+        let linked = batch(
+            root,
+            &[("link", timed(EntryKind::Symlink, Some(70), None)), ("small", timed(EntryKind::File, Some(10), None))],
+        );
+        assert_eq!(linked.newest, 70);
+        let special = batch(root, &[("pipe", timed(EntryKind::Other, None, Some(80)))]);
+        assert_eq!(special.newest, 80);
+    }
+
+    #[test]
+    fn an_entry_with_only_one_time_counts_that_one() {
+        let (_, root) = rooted("/home");
+        let folded = batch(
+            root,
+            &[("m", timed(EntryKind::File, Some(15), None)), ("c", timed(EntryKind::File, None, Some(25)))],
+        );
+        assert_eq!(folded.newest, 25);
     }
 
     #[test]

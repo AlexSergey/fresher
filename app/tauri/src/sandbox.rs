@@ -16,7 +16,7 @@ use fresher_engine::{CleanupPorts, Engine};
 use fresher_macos::{
     MacFolderReader, MacOpenFiles, MacTrash, MacVolumes, current_user, places_that_prompt, protection,
 };
-use fresher_sandbox::{Sandbox, StatedSpace, World};
+use fresher_sandbox::{Sandbox, StatedSpace, StatedTimes, World};
 use fresher_store::{DataFolder, FileCleanupJournal};
 use fresher_system::{
     AppSearch, BundleReader, COMMAND_TIMEOUT, DeclaredSearch, MacFinderSettings, MacInstalledApps,
@@ -221,6 +221,8 @@ pub struct SandboxPorts {
     pub installs: Arc<dyn InstallRecords>,
     /// What the walk's reader reports instead of the disk's, for the stated entries only (`World::stated`).
     pub stated: StatedFacts,
+    /// The status changes of the aged entries, which the disk cannot be told (`World::aged`, `StatedTimes`).
+    pub aged: StatedFacts,
 }
 
 impl std::fmt::Debug for SandboxPorts {
@@ -264,6 +266,7 @@ impl SandboxPorts {
             access,
             installs: Arc::new(world.install_records()),
             stated: world.stated(sandbox.path()),
+            aged: world.aged(sandbox.path()),
         })
     }
 }
@@ -350,7 +353,7 @@ pub(crate) fn compose(
     let apps = installed_apps(&world, sandbox.path(), Arc::clone(&known_folders), &ports.stated);
     let engine = assemble(Shared {
         folder: data,
-        reader: Arc::new(FactsLens::new(MacFolderReader::new(), ports.stated)),
+        reader: Arc::new(FactsLens::new(StatedTimes::new(MacFolderReader::new(), ports.aged), ports.stated)),
         avoid,
         known_folders,
         volumes: ports.volumes,

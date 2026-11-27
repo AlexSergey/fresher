@@ -145,6 +145,7 @@ fn fakes() -> SandboxPorts {
         access: Arc::new(FakeAccess::with(&[(Capability::AllFiles, Access::Unknown)])),
         installs: Arc::new(FakeInstallRecords::default()),
         stated: StatedFacts::new(),
+        aged: StatedFacts::new(),
     }
 }
 
@@ -898,6 +899,21 @@ mod positive {
 
         assert!(ports.installs.system_version().is_err());
         assert_eq!(ports.installs.receipts().unwrap(), []);
+    }
+
+    /// The disk cannot be told a status change, so the world's aged entries are what sandbox mode reads instead.
+    #[test]
+    fn the_real_ports_take_the_aged_entries_of_the_world() {
+        let world = World::new();
+        let sandbox = world.sandbox();
+        fs::write(sandbox.home().join("old.bin"), "x").unwrap();
+        fs::write(sandbox.world(), "now = 1795000000\n[[aged]]\npath = \"home/old.bin\"\nchanged = 1700000000\n")
+            .unwrap();
+
+        let ports = crate::sandbox::SandboxPorts::real(&sandbox).unwrap();
+
+        assert_eq!(ports.aged.len(), 1);
+        assert!(ports.stated.is_empty());
     }
 
     #[test]

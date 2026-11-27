@@ -506,8 +506,18 @@ test.describe('positive cases', () => {
       await open(page, SCRIPTS.largest);
       await scan(page, '2.6 GB');
       await go(page, 'Largest', 'Largest files and folders');
+      await page.getByRole('tab', { name: 'Browse' }).click();
+      await expect(page.getByRole('list', { name: 'Folders and files, largest first' })).toBeVisible();
+
+      expect(await violations(page)).toStrictEqual([]);
+    });
+
+    test('the folders left alone', async ({ page }) => {
+      await open(page, SCRIPTS.largest);
+      await scan(page, '2.6 GB');
+      await go(page, 'Largest', 'Largest files and folders');
       await page.getByRole('tab', { name: 'Folders' }).click();
-      await expect(page.getByRole('list', { name: 'Folders, largest first' })).toBeVisible();
+      await expect(page.getByRole('list', { name: 'Folders left alone, largest first' })).toBeVisible();
 
       expect(await violations(page)).toStrictEqual([]);
     });

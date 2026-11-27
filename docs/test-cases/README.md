@@ -17,6 +17,7 @@ are in the table below, one column per release.
 | ---------------------------------------- | ---------------------------------------------------------------------------------- |
 | [`sandbox-cleanup.md`](./sandbox-cleanup.md) | scan, move to the Trash, put back, permanent delete, an item in use, quitting, in a sandbox with the system's Trash |
 | [`high-and-largest.md`](./high-and-largest.md) | the "Only if you are sure" group, the High tick in the confirmation, Largest's ticks, an uninstall of everything, in a sandbox |
+| [`largest-folders.md`](./largest-folders.md) | Largest's Folders and Browse: the folders left alone, Show in Finder, the smallest-folder setting, a real home |
 | [`left-out-lines.md`](./left-out-lines.md) | the left-out lines of a category's details, folded at the bottom, and a category with everything left out, on a real scan |
 
 ## Results
@@ -43,3 +44,8 @@ are in the table below, one column per release.
 | HL-02 | The High tick in the confirmation                        | —                                                           |       |
 | HL-03 | Largest's ticks                                          | —                                                           |       |
 | HL-04 | Uninstall everything                                     | —                                                           |       |
+| LF-01 | The folders left alone | — | |
+| LF-02 | Show in Finder on a folder | — | |
+| LF-03 | The smallest-folder setting | — | |
+| LF-04 | Browse is read-only | — | |
+| LF-05 | A real home's folders | — | |

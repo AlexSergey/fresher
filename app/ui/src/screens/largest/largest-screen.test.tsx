@@ -7,7 +7,10 @@ import type {
   LargestPage,
   LargestQuery,
   LargestRow,
+  NodeId,
+  NodeInfo,
   Overview,
+  OwnPlace,
   Refusal,
 } from '../../ipc/bindings.generated';
 import type { CoreAnswers } from '../../ipc/mock';
@@ -25,7 +28,14 @@ import {
   IDLE,
   LIMITED_COVERAGE,
 } from '../../test/demo-scan';
-import { LARGEST_DICTIONARY, LARGEST_ROWS, largestPageOf, manyRows, ownFindingOf } from '../../test/largest-scan';
+import {
+  FOLDERS,
+  LARGEST_DICTIONARY,
+  LARGEST_ROWS,
+  largestPageOf,
+  manyRows,
+  ownFindingOf,
+} from '../../test/largest-scan';
 import { AppProviders } from '../app-providers';
 import { LargestScreen } from './largest-screen';
 
@@ -50,6 +60,8 @@ const show = async (answers: Partial<CoreAnswers> = {}, overview: Overview = ove
     getAccessStatus: () => accessStatus([[{ kind: 'all-files' }, 'granted']]),
     getDictionary: () => DICTIONARY,
     getLargest: (args) => largestPageOf(queryOf(args)),
+    getLargestFolders: () => FOLDERS,
+    getLargestPlace: placeOf,
     getModules: () => DEMO_MODULES,
     getOverview: () => overview,
     getSettings: () => DEMO_SETTINGS,
@@ -84,6 +96,35 @@ const REFUSAL = {
   text: { args: {}, key: 'core.error.not-own-item' },
 } as unknown as Refusal;
 
+const folderNode = (index: number, name: string): NodeInfo => ({
+  ...(FOLDERS.rows[0]?.node as NodeInfo),
+  id: { index, state: 1 },
+  name,
+});
+
+const HOME = folderNode(1, 'someone');
+const MOVIES = folderNode(2, 'Movies');
+
+// The home's folders on Browse: Movies, which opens onto Trips.
+const placeOf = (args: unknown): OwnPlace => {
+  const { folder } = args as { readonly folder: NodeId | null };
+  const rowOf = (node: NodeInfo): OwnPlace['rows'][number] => ({
+    explained: { allocated: 0, completeness: 'complete', logical: 0, reclaimable: 0 },
+    kind: 'folder',
+    node,
+    offer: { kind: 'offered' },
+    opens: true,
+  });
+
+  return folder === null
+    ? { offset: 0, path: [HOME], rows: [rowOf(MOVIES)], total: 1 }
+    : { offset: 0, path: [HOME, MOVIES], rows: [rowOf(folderNode(3, 'Trips'))], total: 1 };
+};
+
+const tab = (name: string): void => {
+  fireEvent.click(screen.getByRole('tab', { name }));
+};
+
 const page = (rows: readonly LargestRow[], extra: Partial<LargestPage> = {}): LargestPage => ({
   ...largestPageOf({ kind: null, limit: 100, offset: 0, place: null, unchanged: 'any' }, rows),
   ...extra,
@@ -104,9 +145,29 @@ describe('LargestScreen', () => {
       const getLargest = vi.fn();
       await show({ getLargest }, IDLE);
 
-      expect(await screen.findByText('Scan first to see your largest files.')).toBeInTheDocument();
+      expect(await screen.findByText('Scan first to see your largest files and folders.')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Scan' })).toBeInTheDocument();
       expect(getLargest).not.toHaveBeenCalled();
+    });
+
+    it('the Folders tab asks nothing before a scan', async () => {
+      const getLargestFolders = vi.fn(() => FOLDERS);
+      await show({ getLargestFolders }, IDLE);
+
+      await screen.findByText('Scan first to see your largest files and folders.');
+
+      expect(getLargestFolders).not.toHaveBeenCalled();
+      expect(screen.queryByRole('tab', { name: 'Folders' })).not.toBeInTheDocument();
+    });
+
+    it('the Folders tab has no checkbox', async () => {
+      await show();
+      await screen.findByText('ubuntu-24.04.dmg');
+
+      tab('Folders');
+
+      expect(await screen.findByRole('list', { name: 'Folders left alone, largest first' })).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
     it('while a scan runs it says the list comes back', async () => {
@@ -193,6 +254,69 @@ describe('LargestScreen', () => {
   });
 
   describe('positive cases', () => {
+    it('the Folders tab lists the folders left alone', async () => {
+      await show();
+      await screen.findByText('ubuntu-24.04.dmg');
+
+      tab('Folders');
+
+      const list = await screen.findByRole('list', { name: 'Folders left alone, largest first' });
+
+      expect(within(list).getAllByRole('listitem')).toHaveLength(FOLDERS.rows.length);
+      expect(within(list).getByRole('button', { name: 'Show in Finder: Archive' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Open these in the Finder and decide what to keep' }),
+      ).toBeInTheDocument();
+    });
+
+    it("the Browse tab shows the home's folders", async () => {
+      await show();
+      await screen.findByText('ubuntu-24.04.dmg');
+
+      tab('Browse');
+
+      const list = await screen.findByRole('list', { name: 'Folders and files, largest first' });
+
+      expect(within(list).getByText('Movies')).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Go into a folder, or show it in the Finder' }),
+      ).toBeInTheDocument();
+    });
+
+    it('the opened folder stays while another tab is looked at', async () => {
+      await show();
+      await screen.findByText('ubuntu-24.04.dmg');
+      tab('Browse');
+      fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
+      await screen.findByText('Trips');
+
+      tab('Folders');
+      await screen.findByRole('list', { name: 'Folders left alone, largest first' });
+      tab('Browse');
+
+      expect(await screen.findByText('Trips')).toBeInTheDocument();
+      expect(within(screen.getByRole('navigation', { name: 'Where you are' })).getByText('Movies')).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+    });
+
+    it('the subtitle follows the tab', async () => {
+      await show();
+      expect(await screen.findByText('5 items, 29.3 GB')).toBeInTheDocument();
+
+      tab('Folders');
+
+      expect(await screen.findByText('5 folders, 47 GB')).toBeInTheDocument();
+      expect(screen.queryByText('5 items, 29.3 GB')).not.toBeInTheDocument();
+
+      tab('Browse');
+
+      await screen.findByText('Movies');
+      expect(screen.queryByText('5 folders, 47 GB')).not.toBeInTheDocument();
+      expect(screen.queryByText('5 items, 29.3 GB')).not.toBeInTheDocument();
+    });
+
     it('the rows come largest first as the core sent them', async () => {
       await show();
 

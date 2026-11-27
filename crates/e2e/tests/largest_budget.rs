@@ -3,7 +3,9 @@
 //! every cache folder, as `storage_budget.rs`). Measured at the default smallest size (100 MB), at none (the tree's
 //! files are sparse and kept as no node, so the engine's rule reads every folder and keeps nothing), and with a rule
 //! that calls every folder from some depth an item, filling the list to its cap. Run by hand, in release:
-//! `cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture items_of_the_large_tree`.
+//! `cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture items_of_the_large_tree` (the Files list) and
+//! `... folders_of_the_large_tree` (the Folders list, plan 044: at no smallest size, once with every folder left alone,
+//! once with none, so the query enters every folder).
 
 #[cfg(test)]
 mod positive {
@@ -15,9 +17,10 @@ mod positive {
 
     use fresher_core::{
         ByteSize, CancelToken, CategoryId, Claim, ClaimedPath, DiskState, DiskWalk, Interest, InterestSet, ItemRule,
-        ItemVisit, KnownFolder, MAX_ITEMS, ModuleId, NodeKind, Pattern, VolumeFacts, VolumeId, WalkMode, WalkRequest,
+        ItemVisit, KnownFolder, MAX_ITEMS, ModuleId, NodeKind, Pattern, Timestamp, VolumeFacts, VolumeId, WalkMode,
+        WalkRequest,
     };
-    use fresher_engine::bench::LargestBench;
+    use fresher_engine::bench::{FoldersBench, LargestBench};
     use fresher_scanner::{Scanner, ScannerOptions, StdReader, home_anchor};
     use fresher_testing::{FakeChangeJournal, FakeVolumes, LargeTree, MemoryScanCache, TreeSpec};
 
@@ -131,5 +134,32 @@ mod positive {
             LargestBench::build_with(&*state, &root, &FoldersFrom(full_at), ByteSize::new(0))
         });
         assert_eq!(full.len(), cap(), "the list is full");
+    }
+
+    /// Times the Folders list over `state` with folders left alone since `before`; prints and checks the time and the
+    /// heap of the list and its first page.
+    fn measure_folders(what: &str, state: &dyn DiskState, root: &Path, before: Timestamp) -> FoldersBench {
+        let started = Instant::now();
+        let folders = FoldersBench::build(state, root, ByteSize::new(0), before);
+        let elapsed = started.elapsed();
+
+        let heap = folders.heap_bytes();
+        eprintln!("folders of the large tree, {what}: {} listed, {elapsed:.1?}, {heap} heap bytes", folders.len());
+        assert!(elapsed.as_millis() <= MOST_MILLIS, "{elapsed:?}");
+        assert!(heap <= MOST_HEAP, "{heap} bytes");
+        folders
+    }
+
+    #[test]
+    #[ignore = "the large tree, run by hand in release"]
+    fn folders_of_the_large_tree_stay_within_the_budget() {
+        let under = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/bench-trees");
+        let tree = LargeTree::build(&TreeSpec::LARGE, &under).unwrap();
+        let root = std::fs::canonicalize(tree.root()).unwrap();
+        let state = committed(&root);
+        let none_left =
+            measure_folders("none left alone, every folder entered", &*state, &root, Timestamp::from_secs(0));
+        assert!(none_left.is_empty(), "nothing is older than the epoch");
+        measure_folders("every folder left alone, the highest of each branch", &*state, &root, state.taken());
     }
 }

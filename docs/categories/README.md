@@ -9,7 +9,10 @@ user picks by hand on the Largest screen ([`core-own-file.md`](./core-own-file.m
 [035](../plans/035-large-files/readme.md)); two more are the core's, `core.uninstall-keep-data` and
 `core.uninstall-everything`, the app an uninstall takes with or without its data, offered only from an app's page,
 never on Scan ([`core-uninstall-keep-data.md`](./core-uninstall-keep-data.md),
-[`core-uninstall-everything.md`](./core-uninstall-everything.md), plan [036](../plans/036-uninstall/readme.md)). How a module is written:
+[`core-uninstall-everything.md`](./core-uninstall-everything.md), plan [036](../plans/036-uninstall/readme.md)). Beside
+`core.own-file`, Largest's Folders and Browse are information views, not categories (plan
+[044](../plans/044-largest-folders/readme.md)): nothing on them is removed, counted in a total or sent to a plan; they
+only show a folder and open it in the Finder. How a module is written:
 [`../architecture/modules.md`](../architecture/modules.md).
 
 There is no "Other", "Miscellaneous" or "System data" category. Space no rule recognizes is shown as its real folders.

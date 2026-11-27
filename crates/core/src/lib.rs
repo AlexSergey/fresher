@@ -85,7 +85,7 @@ pub use coverage::{Coverage, NotEntered, UnreadableCount};
 pub use danger::{DangerLevel, HighLevel};
 pub use dictionary::{Dictionary, DictionaryError};
 pub use disk_state::{
-    ChildOrder, DiskState, ItemRule, ItemVisit, NodeId, NodeInfo, NodeKind, NodePage, NotScanned, StateId,
+    ChildOrder, DiskState, ItemRule, ItemVisit, LeftAlone, NodeId, NodeInfo, NodeKind, NodePage, NotScanned, StateId,
     UnreadablePlace,
 };
 pub use error::{CommandError, Refusal};
@@ -104,9 +104,9 @@ pub use interest::{Claim, EntryKind, Interest, InterestError, InterestSet, Marke
 pub use journal::{ChangeJournal, Changes, JournalGap, JournalPosition};
 pub use known_folder::{KnownFolder, KnownFolders, expand_home};
 pub use largest::{
-    ItemKind, KindCount, LargestPage, LargestQuery, LargestRow, MAX_ITEMS, MAX_PAGE, OWN_FILE_ID, Offer, OwnPlace,
-    OwnRow, PlaceCount, Unchanged, Withheld, archive_stem, is_app_bundle, is_package, kind_of, own_file,
-    own_file_reason, own_file_title,
+    FolderRow, FoldersPage, FoldersQuery, ItemKind, KindCount, LargestPage, LargestQuery, LargestRow, LeftFor,
+    MAX_ITEMS, MAX_PAGE, OWN_FILE_ID, Offer, OwnPlace, OwnRow, PlaceCount, Unchanged, Withheld, archive_stem,
+    is_app_bundle, is_package, kind_of, own_file, own_file_reason, own_file_title,
 };
 pub use left_out::{LEFT_OUT_SHOWN, LeftOutCount, LeftOutEntry, LeftOutItem, LeftOutKind};
 pub use module::{
@@ -121,9 +121,10 @@ pub use removal::{MAX_PARTS, Parts, Removal, RemovalError, ToolCommand};
 pub use scan_cache::{ScanCache, ScopeKey};
 pub use settings::{
     AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION_KEY, DaySetting, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES,
-    IGNORE_PATHS, IdOf, LARGEST_MIN_SIZE, ModuleSettings, ResolvedSettings, SCAN_ROOTS, SchemaError, SettingDescriptor,
-    SettingEffect, SettingError, SettingGroup, SettingKey, SettingKind, SettingProblem, SettingValue, SettingsSchema,
-    Unit, min_size_of,
+    IGNORE_PATHS, IdOf, LARGEST_FOLDER_MIN_SIZE, LARGEST_MIN_SIZE, ModuleSettings, ResolvedSettings, SCAN_ROOTS,
+    STALE_PROJECTS_MODULE, STALE_PROJECTS_UNUSED_FOR, SchemaError, SettingDescriptor, SettingEffect, SettingError,
+    SettingGroup, SettingKey, SettingKind, SettingProblem, SettingValue, SettingsSchema, Unit, folder_min_size_of,
+    min_size_of,
 };
 pub use size::{ByteSize, Completeness, Sizes};
 pub use storage::{

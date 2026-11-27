@@ -8,8 +8,8 @@ use fresher_core::{
     Sizes, archive_stem,
 };
 
-use crate::largest::Ground;
 use crate::largest::items::{Item, Items};
+use crate::largest::{Ground, from_home};
 use crate::results::add;
 
 /// The page `query` asks of `items`, leaving out the ignored paths and what a cleanup removed of the picks.
@@ -99,14 +99,4 @@ fn row(item: &Item, ground: &Ground<'_>) -> Option<LargestRow> {
 
 fn is_folder(ground: &Ground<'_>, path: &Path) -> bool {
     ground.state.find(path).and_then(|id| ground.state.node(id)).is_some_and(|node| node.kind == NodeKind::Folder)
-}
-
-/// `folder` written from `home`: `~` for the home itself, `~/a/b` below it; lossy, for display only.
-fn from_home(home: &Path, folder: &Path) -> String {
-    let home_itself = Path::new("~");
-    match folder.strip_prefix(home) {
-        Ok(inside) if inside.as_os_str().is_empty() => home_itself.to_string_lossy().into_owned(),
-        Ok(inside) => home_itself.join(inside).to_string_lossy().into_owned(),
-        Err(_) => folder.to_string_lossy().into_owned(),
-    }
 }

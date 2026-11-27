@@ -148,6 +148,7 @@ fn sentence(case: &Case, module: Option<ModuleId>) -> String {
     match case.expect() {
         None if case.kind() == CaseKind::Positive => match case.uninstall() {
             Some(uninstall) => format!("uninstalled on the Apps screen: `{}`", uninstall.app().display()),
+            None if case.largest().is_some() => "a folder left alone, listed on Largest".to_owned(),
             None => String::new(),
         },
         None => {
@@ -287,13 +288,23 @@ fn largest_sentence(largest: &LargestExpectation, texts: Option<&Dictionary>) ->
         Shown::Absent => format!("On Largest, nothing at or below `{at}` is listed."),
         Shown::Withheld => {
             let reason = largest.withheld().map(|reason| text(reason.text_key())).unwrap_or_default();
-            format!("On Largest → Folders, `{at}` cannot be chosen: {}.", reason.trim_end_matches('.'))
+            format!("On Largest → Browse, `{at}` shows the note: {}.", reason.trim_end_matches('.'))
         }
+        Shown::Listed => {
+            let project = if largest.project() == Some(true) { " (a project)" } else { "" };
+            format!("Largest, Folders: `{}` is listed{project}.", from_home(largest.at()))
+        }
+        Shown::Unlisted => format!("Largest, Folders: `{}` is not listed.", from_home(largest.at())),
         Shown::NotSeen => format!(
             "On Largest, nothing in `{at}` is listed, and the notice above the list says Fresher did not look there \
              and how to allow it."
         ),
     }
+}
+
+/// `at` as the screen shows it: from `~` when it is in the sandbox's home.
+fn from_home(at: &Path) -> String {
+    at.strip_prefix("home").map_or_else(|_| at.display().to_string(), |inside| format!("~/{}", inside.display()))
 }
 
 /// What the Apps screen shows of the case's app and what its uninstall does, with the reason's sentence and the
@@ -491,7 +502,7 @@ reason = "in-use"
 
             assert_eq!(
                 sentence,
-                "On Largest → Folders, `home/Movies` cannot be chosen: core.largest.withheld.standard-folder."
+                "On Largest → Browse, `home/Movies` shows the note: core.largest.withheld.standard-folder."
             );
         }
 
@@ -556,9 +567,9 @@ reason = "in-use"
         fn a_stated_fact_is_named_under_its_case() {
             let cases = CASES.replace(
                 "path = \"home/other.bin\"\n",
-                "path = \"home/other.bin\"\nowner = \"system\"\nchanged = \"30d\"\n\
+                "path = \"home/other.bin\"\nowner = \"system\"\nage = \"60d\"\nchanged = \"30d\"\n\
                  [[case.file]]\npath = \"private/tmp/sock\"\nkind = \"socket\"\nflags = [\"no-unlink\", \"user-lock\"]\n\
-                 accessed = \"-2h\"\n[[case.dir]]\npath = \"private/tmp/theirs\"\nowner = \"other-user\"\nchanged = \"90s\"\n",
+                 accessed = \"-2h\"\n[[case.dir]]\npath = \"private/tmp/theirs\"\nowner = \"other-user\"\nage = \"1d\"\nchanged = \"90s\"\n",
             );
 
             let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
@@ -624,7 +635,7 @@ reason = "in-use"
                 lines,
                 [
                     "  - On Largest, nothing at or below `home/Library/a.bin` is listed.",
-                    "  - On Largest → Folders, `home/Movies` cannot be chosen: A standard folder of your Mac. Open it to \
+                    "  - On Largest → Browse, `home/Movies` shows the note: A standard folder of your Mac. Open it to \
                      choose what is inside.",
                     "  - On Largest, nothing in `home/Documents` is listed, and the notice above the list says Fresher \
                      did not look there and how to allow it.",
@@ -633,6 +644,35 @@ reason = "in-use"
                      beside it.",
                     "  - Shown in the app only while the build offers High (`flags.toml`, `high`).",
                     "  - On Largest, `home/B` is listed and can be chosen.",
+                ]
+            );
+        }
+
+        #[test]
+        fn the_checklist_says_what_the_folders_list_shows() {
+            let case = |name: &str, kind: &str, at: &str, shown: &str| {
+                format!(
+                    "[[case]]\nname = \"{name}\"\nkind = \"{kind}\"\n[[case.file]]\npath = \"{at}/f.bin\"\n\
+                     [case.largest]\nshown = \"{shown}\"\nat = \"{at}\"\n"
+                )
+            };
+            let cases = format!(
+                "feature = \"largest-folders\"\n{}{}{}",
+                case("a", "negative", "home/Code", "unlisted"),
+                case("b", "negative", "home/Archive", "listed"),
+                case("c", "negative", "home/Code/old-app", "listed")
+                    .replace("shown = \"listed\"", "shown = \"listed\"\nproject = true"),
+            );
+
+            let text = checklist(&[CaseFile::parse(&cases).unwrap()], &[], Path::new("/sandbox"), super::now());
+
+            let lines: Vec<&str> = text.lines().filter(|line| line.starts_with("  - ")).collect();
+            assert_eq!(
+                lines,
+                [
+                    "  - Largest, Folders: `~/Code` is not listed.",
+                    "  - Largest, Folders: `~/Archive` is listed.",
+                    "  - Largest, Folders: `~/Code/old-app` is listed (a project).",
                 ]
             );
         }

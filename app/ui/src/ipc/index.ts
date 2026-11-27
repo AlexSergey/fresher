@@ -25,6 +25,8 @@ import type {
   FindingId,
   FindingsPage,
   FindingsQuery,
+  FoldersPage,
+  FoldersQuery,
   IgnoredEntry,
   IgnoreTarget,
   LargestPage,
@@ -69,6 +71,7 @@ export const COMMANDS = {
   getDictionary: 'get_dictionary',
   getFindings: 'get_findings',
   getLargest: 'get_largest',
+  getLargestFolders: 'get_largest_folders',
   getLargestPlace: 'get_largest_place',
   getModules: 'get_modules',
   getOverview: 'get_overview',
@@ -93,6 +96,7 @@ export const COMMANDS = {
   revealApp: 'reveal_app',
   revealFinding: 'reveal_finding',
   revealInTrash: 'reveal_in_trash',
+  revealNode: 'reveal_node',
   startScan: 'start_scan',
   subscribe: 'subscribe',
   updateSetting: 'update_setting',
@@ -186,8 +190,11 @@ export const revealApp = (app: AppId): Promise<void> => call('revealApp', { app 
 export const prepareUninstall = (app: AppId, choice: UninstallChoice): Promise<CleanupPlanView> =>
   call('prepareUninstall', { app, choice });
 
-// One page of the Files list of the last scan: the largest files and folders below the home, largest first.
+// One page of the Files list of the last scan: the largest files below the home, largest first.
 export const getLargest = (query: LargestQuery): Promise<LargestPage> => call('getLargest', { query });
+
+// One page of the folders of the home left alone, largest first.
+export const getLargestFolders = (query: FoldersQuery): Promise<FoldersPage> => call('getLargestFolders', { query });
 
 // One page of the folder `folder` of the home (the home itself for `null`), largest first.
 export const getLargestPlace = (folder: NodeId | null, offset: number, limit: number): Promise<OwnPlace> =>
@@ -229,6 +236,9 @@ export const openAccessSettings = (capability: Capability): Promise<void> => cal
 
 // "Show in Finder": Finder shows the finding selected; the UI names the finding's id, the core holds its path.
 export const revealFinding = (finding: FindingId): Promise<void> => call('revealFinding', { finding });
+
+// "Show in Finder" of a Largest row: the UI names the node's id, the core holds its path.
+export const revealNode = (node: NodeId): Promise<void> => call('revealNode', { node });
 
 // "Reopen Fresher": the app relaunches, as a Full Disk Access grant needs; refused while a cleanup runs.
 export const relaunch = (): Promise<void> => call('relaunch');

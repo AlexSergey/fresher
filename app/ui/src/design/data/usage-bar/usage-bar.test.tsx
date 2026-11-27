@@ -82,7 +82,15 @@ describe('UsageBar', () => {
     });
 
     it('each tone is drawn with its token', () => {
-      for (const tone of ['your-folders', 'mac-os', 'swap-and-sleep', 'other-volume', 'disk-own'] as const) {
+      for (const tone of [
+        'files-and-apps',
+        'system-space',
+        'your-folders',
+        'mac-os',
+        'swap-and-sleep',
+        'other-volume',
+        'disk-own',
+      ] as const) {
         expect(css).toMatch(new RegExp(`\\[data-tone='${tone}'\\][^}]*var\\(--part-${tone}\\)`, 'u'));
       }
 
@@ -93,6 +101,21 @@ describe('UsageBar', () => {
       render(<UsageBar label="Space found" segments={SEGMENTS} total={100} />);
 
       expect(screen.getByRole('img', { name: 'Space found: Xcode 42 GB, Docker 18 GB' })).toBeInTheDocument();
+    });
+
+    it('shows the caption between the bar and the legend', () => {
+      render(<UsageBar caption={<p>60 GB of 120 GB</p>} label="Space found" legend segments={SEGMENTS} total={120} />);
+      const caption = screen.getByText('60 GB of 120 GB');
+
+      expect(screen.getByRole('img').compareDocumentPosition(caption)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(caption.compareDocumentPosition(screen.getByRole('list'))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('lays the legend in three columns when asked', () => {
+      render(<UsageBar label="Space found" legend legendColumns={3} segments={SEGMENTS} total={100} />);
+
+      expect(screen.getByRole('list')).toHaveAttribute('data-columns', '3');
+      expect(css).toMatch(/\.legend\[data-columns='3'\][^}]*repeat\(3, minmax\(0, 1fr\)\)/u);
     });
 
     it("the usage bar's legend matches its segments", () => {

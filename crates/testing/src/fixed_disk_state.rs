@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    ByteSize, CategoryId, ChildOrder, DiskState, ItemRule, ItemVisit, NodeId, NodeInfo, NodeKind, NodePage, NotScanned,
-    Sizes, StateId, Timestamp, UnreadablePlace,
+    ByteSize, CategoryId, ChildOrder, Completeness, DiskState, ItemRule, ItemVisit, LeftAlone, NodeId, NodeInfo,
+    NodeKind, NodePage, NotScanned, Sizes, StateId, Timestamp, UnreadablePlace,
 };
 
 /// A [`DiskState`] built from a list of paths with their kinds and sizes, for the engine's tests and the reference
@@ -24,6 +24,7 @@ struct Node {
     owner: Option<CategoryId>,
     not_scanned: Option<NotScanned>,
     modified: Option<Timestamp>,
+    newest: Option<Timestamp>,
     parent: Option<usize>,
     children: Vec<usize>,
 }
@@ -40,6 +41,7 @@ impl FixedDiskState {
                 owner: None,
                 not_scanned: None,
                 modified: None,
+                newest: None,
                 parent: None,
                 children: Vec::new(),
             })
@@ -79,6 +81,15 @@ impl FixedDiskState {
     pub fn with_modified(mut self, path: &Path, modified: Timestamp) -> Self {
         if let Some(node) = self.nodes.iter_mut().find(|node| node.path == path) {
             node.modified = Some(modified);
+        }
+        self
+    }
+
+    /// Records the newest change of anything inside `path`; a path not in the state is ignored.
+    #[must_use]
+    pub fn with_newest(mut self, path: &Path, newest: Timestamp) -> Self {
+        if let Some(node) = self.nodes.iter_mut().find(|node| node.path == path) {
+            node.newest = Some(newest);
         }
         self
     }
@@ -152,6 +163,36 @@ impl FixedDiskState {
                     self.collect_items(child, rule, min, depth + 1, found);
                 }
                 ItemVisit::Item | ItemVisit::Enter => found.push(child),
+            }
+        }
+    }
+
+    /// Adds to `found` the folders below `position` left alone before `before`, children by name, as
+    /// [`DiskState::left_alone`] says.
+    fn collect_left_alone(
+        &self,
+        position: usize,
+        rule: &dyn ItemRule,
+        min: ByteSize,
+        before: Timestamp,
+        depth: u32,
+        found: &mut Vec<(usize, Timestamp)>,
+    ) {
+        let mut children = self.nodes[position].children.clone();
+        children.sort_by_key(|&child| self.name(child));
+        for child in children {
+            let node = &self.nodes[child];
+            if node.owner.is_some() || node.kind != NodeKind::Folder || node.sizes.allocated < min {
+                continue;
+            }
+            if rule.visit(&self.name(child), node.kind, depth) != ItemVisit::Enter {
+                continue;
+            }
+            match node.newest {
+                Some(newest) if node.sizes.completeness == Completeness::Complete && newest < before => {
+                    found.push((child, newest));
+                }
+                _ => self.collect_left_alone(child, rule, min, before, depth + 1, found),
             }
         }
     }
@@ -260,6 +301,28 @@ impl DiskState for FixedDiskState {
         let limit = limit.min(fresher_core::MAX_ITEMS.saturating_add(1));
         Some(self.largest(found, limit).into_iter().map(|info| info.id).collect())
     }
+
+    /// A recursive walk from `root`, sizes and newest as recorded; a `Partial` folder is unknown.
+    fn left_alone(
+        &self,
+        root: NodeId,
+        rule: &dyn ItemRule,
+        min: ByteSize,
+        before: Timestamp,
+    ) -> Option<Vec<LeftAlone>> {
+        let root = self.position(root)?;
+        let node = &self.nodes[root];
+        let mut found = Vec::new();
+        if node.owner.is_none() && node.kind != NodeKind::Link && node.sizes.allocated >= min {
+            self.collect_left_alone(root, rule, min, before, 1, &mut found);
+        }
+        let mut found: Vec<(usize, Timestamp)> = found;
+        found.sort_by(|&(a, _), &(b, _)| {
+            let (a, b) = (&self.nodes[a], &self.nodes[b]);
+            b.sizes.allocated.cmp(&a.sizes.allocated).then_with(|| a.path.cmp(&b.path))
+        });
+        Some(found.into_iter().map(|(position, newest)| LeftAlone { folder: self.id_of(position), newest }).collect())
+    }
 }
 
 #[cfg(test)]
@@ -325,7 +388,12 @@ mod tests {
     mod negative {
         use std::path::Path;
 
-        use fresher_core::{ByteSize, ChildOrder, DiskState, ItemVisit, NodeId, NotScanned, StateId, Unreadable};
+        use crate::FixedDiskState;
+        use fresher_core::{
+            ByteSize, ChildOrder, Completeness, DiskState, ItemVisit, NodeId, NodeKind, NotScanned, Sizes, StateId,
+            Timestamp, Unreadable,
+        };
+        use std::path::PathBuf;
 
         use super::{Named, items, state};
 
@@ -346,6 +414,39 @@ mod tests {
             assert_eq!(items(&state, &rule, 0, 10), Vec::<String>::new());
             let asked: Vec<_> = rule.asked.borrow().iter().map(|(name, _)| name.clone()).collect();
             assert_eq!(asked, ["locked", "inner"]);
+        }
+
+        #[test]
+        fn left_alone_of_a_node_of_another_state_answers_none() {
+            let other = NodeId::new(StateId::new(2), 0);
+
+            assert_eq!(state().left_alone(other, &Named::new(&[]), ByteSize::new(0), Timestamp::from_secs(100)), None);
+        }
+
+        #[test]
+        fn left_alone_skips_a_claimed_a_partial_or_a_recent_folder() {
+            let partial = Sizes { completeness: Completeness::Partial, ..super::bytes(100) };
+            let nodes = [
+                ("/home", NodeKind::Folder, super::bytes(900)),
+                ("/home/claimed", NodeKind::Folder, super::bytes(100)),
+                ("/home/partial", NodeKind::Folder, partial),
+                ("/home/recent", NodeKind::Folder, super::bytes(100)),
+                ("/home/unknown", NodeKind::Folder, super::bytes(100)),
+                ("/home/file", NodeKind::File, super::bytes(100)),
+            ];
+            let nodes = nodes.map(|(path, kind, sizes)| (PathBuf::from(path), kind, sizes));
+            let old = Timestamp::from_secs(10);
+            let state = FixedDiskState::new(StateId::new(1), Timestamp::from_secs(500), nodes)
+                .with_owner(Path::new("/home/claimed"), super::category("demo.claimed"))
+                .with_newest(Path::new("/home/claimed"), old)
+                .with_newest(Path::new("/home/partial"), old)
+                .with_newest(Path::new("/home/recent"), Timestamp::from_secs(100))
+                .with_newest(Path::new("/home/file"), old);
+
+            let found =
+                state.left_alone(state.roots()[0], &Named::new(&[]), ByteSize::new(0), Timestamp::from_secs(100));
+
+            assert_eq!(found, Some(Vec::new()));
         }
 
         #[test]
@@ -420,9 +521,36 @@ mod tests {
     mod positive {
         use std::path::{Path, PathBuf};
 
-        use fresher_core::{ChildOrder, DiskState, ItemVisit, NodeKind, StateId, Timestamp};
+        use fresher_core::{ByteSize, ChildOrder, DiskState, ItemVisit, NodeKind, StateId, Timestamp};
 
         use super::{Named, category, items, state};
+
+        #[test]
+        fn left_alone_answers_the_highest_stale_folder_of_each_branch() {
+            let nodes = [
+                ("/home", NodeKind::Folder, 900),
+                ("/home/work", NodeKind::Folder, 500),
+                ("/home/work/old", NodeKind::Folder, 300),
+                ("/home/work/old/inner", NodeKind::Folder, 200),
+                ("/home/work/fresh", NodeKind::Folder, 200),
+                ("/home/big", NodeKind::Folder, 400),
+            ];
+            let nodes = nodes.map(|(path, kind, size)| (PathBuf::from(path), kind, super::bytes(size)));
+            let (old, new) = (Timestamp::from_secs(10), Timestamp::from_secs(200));
+            let state = crate::FixedDiskState::new(StateId::new(1), Timestamp::from_secs(500), nodes)
+                .with_newest(Path::new("/home/work"), new)
+                .with_newest(Path::new("/home/work/old"), old)
+                .with_newest(Path::new("/home/work/old/inner"), old)
+                .with_newest(Path::new("/home/work/fresh"), new)
+                .with_newest(Path::new("/home/big"), Timestamp::from_secs(20));
+
+            let found =
+                state.left_alone(state.roots()[0], &Named::new(&[]), ByteSize::new(0), Timestamp::from_secs(100));
+
+            let named: Vec<_> =
+                found.unwrap().into_iter().map(|one| (state.node(one.folder).unwrap().name, one.newest)).collect();
+            assert_eq!(named, [("big".to_owned(), Timestamp::from_secs(20)), ("old".to_owned(), old)]);
+        }
 
         #[test]
         fn items_come_largest_first_with_their_depth() {

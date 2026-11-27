@@ -109,6 +109,17 @@ mod negative {
     use super::{DAY, OLD, YESTERDAY, at, every_time, found, holding, scanned};
 
     #[test]
+    fn a_whole_folders_own_change_is_not_a_change_inside_it_for_its_parent() {
+        let mut times = every_time();
+        times[0] = ("cache", [100, YESTERDAY + DAY, 0]);
+
+        let (scanned, root, _tree) = scanned(&times);
+
+        let tree = scanned.tree();
+        assert_eq!(tree.newest(tree.lookup(&root).unwrap()), at(YESTERDAY));
+    }
+
+    #[test]
     fn a_lock_files_name_deep_inside_marks_the_folder() {
         for name in ["app.lock", "server.pid", "LCK..ttyS0", ".#notes.txt"] {
             let (scanned, root, _tree) = holding(name);
@@ -180,6 +191,15 @@ mod positive {
         assert_eq!((cache.modified, cache.changed, cache.accessed), (at(100), at(150), None));
         let expected = Inside { newest_change: at(YESTERDAY), newest_file_access: at(1_000), ..Inside::EMPTY };
         assert_eq!(cache.inside, Some(expected));
+    }
+
+    #[test]
+    fn a_change_deep_inside_a_whole_folder_makes_it_and_its_parent_recent() {
+        let (scanned, root, _tree) = scanned(&every_time());
+
+        let tree = scanned.tree();
+        assert_eq!(tree.newest(tree.lookup(&root.join("cache")).unwrap()), at(YESTERDAY));
+        assert_eq!(tree.newest(tree.lookup(&root).unwrap()), at(YESTERDAY));
     }
 
     #[test]

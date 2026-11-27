@@ -38,7 +38,7 @@ pub enum FixtureError {
     AgeWithModified { path: PathBuf },
     #[error("a time of {path} is not \"<n>d\", \"<n>h\" or \"<n>s\" (\"-\" before it: after now) within the clock")]
     InvalidAge { path: PathBuf },
-    #[error("the file {path} is filled over the cap of 64 MiB a file or 512 MiB a tree")]
+    #[error("the file {path} is filled over the cap of 1 GiB a file or 4 GiB a tree")]
     FillOverCap { path: PathBuf },
     #[error("the fixture path {path} passes through a link")]
     PathThroughLink { path: PathBuf },

@@ -18,7 +18,7 @@ use crate::results::Committed;
 impl Engine {
     /// Makes the row `node` of the last state a finding the user can review and remove: refused `Busy` while a scan or
     /// a cleanup runs, `NoScan` before any scan, `StaleNode` for a node of another state, and `NotOwnItem` unless the
-    /// row is offered now (as Files and Folders judge it, with the ignore list and the removed picks as they are now).
+    /// row is offered now (as Files and Browse judge it, so a plain folder is refused, with the ignore list and the removed picks as they are now).
     /// While High is withheld every pick is refused with `HighWithheld` (a pick is always High).
     /// The same row answers the same finding; a new one takes the session's next free id.
     pub fn pick_own_item(&self, node: NodeId) -> Result<Finding, CommandError> {

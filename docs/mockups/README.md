@@ -24,3 +24,13 @@ shaped it: [`manual-testing/2026-11-24-feedback.md`](../manual-testing/2026-11-2
 | [`row-menu.dc.html`](./0.1.0/row-menu.dc.html)                     | A row's menu: the pointed item filled with the accent colour           |
 | [`logo.dc.html`](./0.1.0/logo.dc.html)                             | The logo's three colour variants; A (graphite and iris) was chosen     |
 | [`logo.svg`](./0.1.0/logo.svg)                                     | The chosen logo, the vector source of `assets/logo.png` and the icons  |
+
+## 0.2.0
+
+Approved on 2026-11-26 for [plan 044](../plans/044-largest-folders/readme.md), step
+[03/01](../plans/044-largest-folders/03-ui/01-mockup.md). Each frame is drawn in the app's dark theme, which binds, and,
+as a sketch, in a light one (the app has no light theme yet).
+
+| File                                         | Screen                                                                           |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| [`largest.dc.html`](./0.2.0/largest.dc.html) | Largest: Files as today; Folders with its bar, tiles and rows; Browse, read-only |

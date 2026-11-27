@@ -2,7 +2,9 @@
 # in the shared one (`private/tmp/`). Every case lives in those two places, beside them (`C/`, `0/`, `X/`, another
 # user's `T`) or in `home/`. What the disk cannot hold is stated (`world.toml`'s `[[entry]]`): an old status change
 # (a file written now has a status change of now), an owner or a flag only root can set, a socket or a pipe. The
-# open and installed apps are the sandbox's own, shared by every case of this file.
+# open and installed apps are the sandbox's own, shared by every case of this file. An aged file or folder is changed
+# when it is old (`age`) unless the case states its own `changed`: the unpacked folder says `0s`, the moment of the
+# sandbox, as an archive unpacked now with old modification times.
 #
 # Times count back from `world.toml`'s `now`. Positives' files are filled with data, so the map's numbers are blocks.
 feature = "temp"
@@ -31,16 +33,20 @@ kind = "negative"
 path = "private/var/folders/xx/sandbox/T/unpacked/README"
 size = 2048
 age = "2000d"
+changed = "0s"
 [[case.file]]
 path = "private/var/folders/xx/sandbox/T/unpacked/lib/data.bin"
 size = 65536
 age = "2000d"
+changed = "0s"
 [[case.dir]]
 path = "private/var/folders/xx/sandbox/T/unpacked/lib"
 age = "2000d"
+changed = "0s"
 [[case.dir]]
 path = "private/var/folders/xx/sandbox/T/unpacked"
 age = "2000d"
+changed = "0s"
 [[case.left-out]]
 category = "temp.old-files"
 reason = "temp.left-out.recent"

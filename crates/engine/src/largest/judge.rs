@@ -67,7 +67,7 @@ impl Above {
     }
 }
 
-/// The offer for the row and whether it opens in Folders: the first that holds of the thirteen rows of the design's
+/// The offer for the row and whether it opens in Browse: the first that holds of the thirteen rows of the design's
 /// table, in order. Only a folder that is not a package ever opens. What is inside a claimed folder is `explained`
 /// and what is inside a package is `hidden`, as the folder above it would be.
 pub(crate) fn judge(input: &Judged<'_>) -> (Offer, bool) {

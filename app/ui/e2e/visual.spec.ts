@@ -594,11 +594,22 @@ test.describe('positive cases', () => {
       await open(page, SCRIPTS.largest);
       await scan(page);
       await go(page, 'Largest', 'Largest files and folders');
-      await page.getByRole('tab', { name: 'Folders' }).click();
-      await expect(page.getByRole('list', { name: 'Folders, largest first' })).toBeVisible();
+      await page.getByRole('tab', { name: 'Browse' }).click();
+      await expect(page.getByRole('list', { name: 'Folders and files, largest first' })).toBeVisible();
       await page.mouse.move(0, 0);
 
       await looksTheSame(page, 'largest-folders.png');
+    });
+
+    test('the folders left alone after a scan', async ({ page }) => {
+      await open(page, SCRIPTS.largest);
+      await scan(page);
+      await go(page, 'Largest', 'Largest files and folders');
+      await page.getByRole('tab', { name: 'Folders' }).click();
+      await expect(page.getByRole('list', { name: 'Folders left alone, largest first' })).toBeVisible();
+      await page.mouse.move(0, 0);
+
+      await looksTheSame(page, 'largest-left-alone.png');
     });
 
     test('a picked file in the review, on a tile of the High group', async ({ page }) => {
@@ -617,7 +628,7 @@ test.describe('positive cases', () => {
     test('the largest files before a scan', async ({ page }) => {
       await open(page, SCRIPTS.demo);
       await go(page, 'Largest', 'Largest files and folders');
-      await expect(page.getByText('Scan first to see your largest files.')).toBeVisible();
+      await expect(page.getByText('Scan first to see your largest files and folders.')).toBeVisible();
       await page.mouse.move(0, 0);
 
       await looksTheSame(page, 'largest-no-scan.png');

@@ -8,11 +8,14 @@ use fresher_core::{EntryKind, FolderListing, RawEntry, Sizes};
 use crate::matcher::Hits;
 use crate::matcher::entry::FolderFacts;
 use crate::tree::access::NodeAccess;
-use crate::tree::node::{Hit, NodeIndex, Sums};
+use crate::tree::node::{Hit, Node, NodeIndex, Sums, time_bits};
 use crate::tree::times::Times;
 
 /// A file at or over this allocated size is kept as its own record (1 MiB, confirmed by plan 004/01).
 pub(crate) const KEEP_THRESHOLD: u64 = 1 << 20;
+
+/// The Finder writes `.DS_Store` when the user only looks at a folder, so it is not a change.
+const DS_STORE: &[u8] = b".DS_Store";
 
 /// One kept entry of a batch: where its name and hits lie in the batch's buffers, what the reader saw, and its access
 /// for the scan's user.
@@ -63,6 +66,9 @@ pub(crate) struct FolderBatch {
     pub(crate) own_hits: Vec<Hit>,
     /// The folder's own times, from its parent's listing: recorded when it has hits of its own.
     pub(crate) own_times: Times,
+    /// The newest change (the later of `modified` and `changed`) of the listing's files, links and special entries
+    /// that were read, `.DS_Store` left out; `i64::MIN` for none.
+    pub(crate) newest: i64,
     /// Some entry could not be read.
     pub(crate) incomplete: bool,
 }
@@ -78,6 +84,7 @@ impl FolderBatch {
             hits: Vec::new(),
             own_hits: Vec::new(),
             own_times: Times::NONE,
+            newest: Node::NO_TIME,
             incomplete: false,
         }
     }
@@ -89,6 +96,11 @@ impl FolderBatch {
     pub(crate) fn hits_of(&self, kept: &Kept) -> &[Hit] {
         self.hits.get(kept.hits.clone()).unwrap_or_default()
     }
+}
+
+/// The time an entry last changed: the later of its `modified` and `changed`; `i64::MIN` when neither is known.
+fn change_of(entry: &RawEntry) -> i64 {
+    time_bits(entry.modified.max(entry.changed))
 }
 
 /// Folds the listing of `folder`. `hits` are the matcher's hits of each entry, in listing order; `facts` the
@@ -110,6 +122,9 @@ pub(crate) fn fold(
         if entry.error.is_some() {
             batch.incomplete = true;
             continue;
+        }
+        if entry.kind != EntryKind::Folder && name != DS_STORE {
+            batch.newest = batch.newest.max(change_of(entry));
         }
         let keep = match entry.kind {
             EntryKind::Folder => true,

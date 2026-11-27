@@ -5,18 +5,16 @@ import type { NodeId, OwnPlace } from '../../ipc/bindings.generated';
 import { Surface } from '../../design/layout/surface/surface';
 import { Button } from '../../design/primitives/button/button';
 import { t } from '../../i18n';
-import { failureOf, getLargestPlace } from '../../ipc';
+import { failureOf, getLargestPlace, revealNode } from '../../ipc';
 import { OwnItemRow, ownItemRowsClass } from '../../product/own-item-row/own-item-row';
 import { useCore, useCoreStore } from '../../state/store';
 import { focusHeading } from '../keep-focus';
 import styles from './largest-screen.module.css';
-import { type OwnPick } from './use-own-pick';
 
-export type FoldersViewProps = {
+export type BrowseViewProps = {
   // The folder shown: `null` is the home.
   readonly folder: NodeId | null;
   readonly onFolder: (folder: NodeId | null) => void;
-  readonly pick: OwnPick;
 };
 
 // Rows asked of the core at a time (the engine's `MAX_PAGE`).
@@ -33,9 +31,9 @@ const screenOf = (element: HTMLElement | null): HTMLElement | null => {
   return node;
 };
 
-// The folders of the home, largest first: the way from the home to the opened folder, then its rows. A folder that
-// opens has an Open button; the folder is the screen's, so it stays while the user looks at Files.
-export const FoldersView = ({ folder, onFolder, pick }: FoldersViewProps): JSX.Element => {
+// The folders of the home, largest first, read-only: the way from the home to the opened folder, then its rows, each
+// with Show in Finder. A folder that opens has an Open button; the folder is the screen's, so it stays while the user looks at another tab.
+export const BrowseView = ({ folder, onFolder }: BrowseViewProps): JSX.Element => {
   const store = useCoreStore();
   const [place, setPlace] = useState<null | OwnPlace>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -122,6 +120,7 @@ export const FoldersView = ({ folder, onFolder, pick }: FoldersViewProps): JSX.E
 
   return (
     <div className={styles.folders} ref={rootRef}>
+      <h2 className={styles.heading}>{t('ui.screen.largest.browse.heading')}</h2>
       <nav aria-label={t('ui.screen.largest.way')}>
         <ol className={styles.way}>
           {place.path.map((step, at) => {
@@ -149,10 +148,9 @@ export const FoldersView = ({ folder, onFolder, pick }: FoldersViewProps): JSX.E
         </ol>
       </nav>
       <Surface elevation={1} padding="none" radius="lg">
-        <ul aria-label={t('ui.screen.largest.folders')} className={`${styles.list ?? ''} ${ownItemRowsClass}`}>
+        <ul aria-label={t('ui.screen.largest.browse')} className={`${styles.list ?? ''} ${ownItemRowsClass}`}>
           {place.rows.map((row) => (
             <OwnItemRow
-              checked={pick.ticked(row)}
               key={`${String(row.node.id.state)}:${String(row.node.id.index)}`}
               {...(row.opens
                 ? {
@@ -161,8 +159,10 @@ export const FoldersView = ({ folder, onFolder, pick }: FoldersViewProps): JSX.E
                     },
                   }
                 : {})}
-              onToggle={() => {
-                pick.toggle(row);
+              onReveal={() => {
+                revealNode(row.node.id).catch((error: unknown) => {
+                  store.dispatch({ failure: failureOf(error), type: 'command-failed' });
+                });
               }}
               row={row}
             />

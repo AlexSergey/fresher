@@ -218,11 +218,11 @@ pub(crate) fn masked(names: &[String], mask: u64) -> Vec<String> {
     (0..64_u32).zip(names).filter(|&(bit, _)| mask & (1 << bit) != 0).map(|(_, name)| name.clone()).collect()
 }
 
-/// A node: a folder or a kept entry. 72 bytes (its access takes a byte that was padding); lists and names are 32-bit
-/// indices into the arena's buffers.
+/// A node: a folder or a kept entry. 80 bytes; lists and names are 32-bit indices into the arena's buffers.
 ///
 /// The three sizes and the file count hold the node's own bytes (a folder's folded files, a kept file's sizes) until
-/// the tree is frozen, and the subtree's after: storing both would cost 28 bytes a node.
+/// the tree is frozen, and the subtree's after: storing both would cost 28 bytes a node. The newest change follows
+/// the same rule.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Node {
     pub(crate) logical: u64,
@@ -230,6 +230,9 @@ pub(crate) struct Node {
     pub(crate) reclaimable: u64,
     /// Seconds since the Unix epoch; `i64::MIN` for none.
     pub(crate) modified: i64,
+    /// The newest change of a file, link or special entry inside: its own listing's until the tree is frozen, its
+    /// subtree's after; `i64::MIN` for none.
+    pub(crate) newest: i64,
     pub(crate) name_offset: u32,
     pub(crate) parent: NodeIndex,
     pub(crate) first_child: NodeIndex,
@@ -249,7 +252,7 @@ pub(crate) struct Node {
 
 impl Node {
     pub(crate) const NO_OWNER: u32 = u32::MAX;
-    const NO_TIME: i64 = i64::MIN;
+    pub(crate) const NO_TIME: i64 = i64::MIN;
 
     pub(crate) const fn new(name_offset: u32, name_len: u16, parent: NodeIndex, flags: NodeFlags) -> Self {
         Self {
@@ -257,6 +260,7 @@ impl Node {
             allocated: 0,
             reclaimable: 0,
             modified: Self::NO_TIME,
+            newest: Self::NO_TIME,
             name_offset,
             parent,
             first_child: NodeIndex::NONE,
@@ -299,6 +303,15 @@ impl Node {
 
     pub(crate) fn set_modified(&mut self, modified: Option<Timestamp>) {
         self.modified = time_bits(modified);
+    }
+
+    pub(crate) fn newest(&self) -> Option<Timestamp> {
+        time_of(self.newest)
+    }
+
+    /// Keeps the larger of the node's newest change and `bits`.
+    pub(crate) fn join_newest(&mut self, bits: i64) {
+        self.newest = self.newest.max(bits);
     }
 }
 
@@ -344,11 +357,11 @@ mod tests {
     mod positive {
         use fresher_core::{EntryKind, Timestamp, Unreadable};
 
-        use crate::tree::node::{Flag, Node, NodeFlags, NodeIndex};
+        use crate::tree::node::{Flag, Node, NodeFlags, NodeIndex, time_bits};
 
         #[test]
-        fn a_node_takes_72_bytes() {
-            assert_eq!(size_of::<Node>(), 72);
+        fn a_node_takes_80_bytes() {
+            assert_eq!(size_of::<Node>(), 80);
         }
 
         #[test]
@@ -363,6 +376,16 @@ mod tests {
             }
             flags.set(Flag::Opaque);
             assert!(flags.has(Flag::Opaque) && flags.has(Flag::Folder) && flags.is_incomplete());
+        }
+
+        #[test]
+        fn newest_keeps_the_larger_time_and_none_stays_none() {
+            let mut node = Node::new(0, 1, NodeIndex::NONE, NodeFlags::of(EntryKind::Folder));
+            assert_eq!(node.newest(), None);
+            node.join_newest(time_bits(Some(Timestamp::from_secs(50))));
+            node.join_newest(time_bits(Some(Timestamp::from_secs(20))));
+            node.join_newest(time_bits(None));
+            assert_eq!(node.newest(), Some(Timestamp::from_secs(50)));
         }
 
         #[test]

@@ -234,7 +234,15 @@ Everything)`. `AppInfo.flags.high` reports it to the UI. The rule:
   8 MiB on disk (`CachePolicy`), so the cache takes at most 32 MiB of the footprint budget. A broken, foreign, older
   or newer file is discarded (one full scan, never a wrong result) and never overwritten except by a save into its
   slot. The cache never deletes a file: rotation is a rename, so it never holds more than its four files.
-- **The cache body** (the scanner's `codec`): its own tree format version, the time the state was taken, the roots with
+- **The scan tree's `newest`** (plan 044; `Node.newest`, `Tree::newest`): the later of `modified` and `changed` (the
+  status change, so a file copied or restored with an old `modified` still counts) of the files, links and special
+  entries below a folder, as read by the walk (`fold`), `.DS_Store` left out and a folder's own time left out. It is
+  the node's own value until `freeze` and its subtree's after, as the sums are, so the tree needs no second walk for
+  it; a folder with anything below it not read in full is never listed on Folders. A rescan keeps it from the cache for a copied folder and
+  takes the new listing's for one read again, so it is never older than the truth: a file that went may leave a folder
+  newer than it is until the next full scan.
+- **The cache body** (the scanner's `codec`; tree format 7, which stores each node's `newest` as a delta from its
+  parent's right after the modification time): its own tree format version, the time the state was taken, the roots with
   their volumes and journal positions, the avoid list, the interest fingerprint and the claims table; then every node
   of the frozen tree depth-first, children in name order — its name front-coded against the previous sibling, its
   flags, child count, own bytes, modification time, hits, for a node with hits its status change, access and inside,
@@ -368,8 +376,9 @@ capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartK
   named places (the Trash) and the largest of the user's folders, then Your folders; every byte of the roots is in
   exactly one leaf, and the volume's other parts are appended at the end (`append_volume_parts`). **By place**
   (`place.rs`): a folder's children largest first, each with its explained size; the UI dropped it with plan
-  [027](../plans/027-scan-screen/readme.md) and it is back as Largest, Folders (plan
-  [035](../plans/035-large-files/readme.md), the section "The largest files" below) with its way up as a breadcrumb.
+  [027](../plans/027-scan-screen/readme.md) and it is back as Largest, Browse (plans
+  [035](../plans/035-large-files/readme.md) and [044](../plans/044-largest-folders/readme.md), the section "The
+  largest files" below), read-only, with its way up as a breadcrumb.
 - **The three phases** (`query.rs`): no scan, scanning and complete (the phase is in the map, `MapPhase`); a query
   takes what it needs under the results' lock and builds after letting it go, so none blocks a scan.
 - **After a cleanup** (`query.rs`, `cleaned_under`): the complete map takes out the tree's sizes of every path the
@@ -380,7 +389,8 @@ capacity. The core holds the types (`StorageMap`, `VolumeMap`, `MapPart`, `PartK
 - **Budget**: the shares of a scan of the `LARGE` tree take under 50 ms and 5 MB
   (`crates/e2e/tests/storage_budget.rs`, run by hand; [`../testing.md`](../testing.md)).
 - The commands are `get_storage_map` and `get_storage_meaning(volume)` (`app/tauri/src/storage_commands.rs`;
-  `get_storage_place` was removed by plan 035, whose `get_largest_place` shows a folder's children). The storage map's sandbox case file (plan 012/05) is not built yet: it
+  `get_storage_place` was removed by plan 035; the by-place view lives on as Largest's Browse, `get_largest_place`,
+  read-only since plan 044, and `Engine::storage_place` has no caller in the UI). The storage map's sandbox case file (plan 012/05) is not built yet: it
   waits for plan [007](../plans/007-safe-development/readme.md) to be merged into `main`.
 
 ## Apps and uninstall
@@ -443,9 +453,11 @@ categories), the engine builds them (`crates/engine/src/apps/`), the UI renders 
 Plan [035](../plans/035-large-files/readme.md): the biggest things the user owns that no module explains, listed so
 the user can choose one. The core judges, the UI renders.
 
-- **Two queries** (the engine's `largest/`): `largest` (the Files list: items below the home, ranked by allocated size,
-  ties in path order, filtered by kind, place and `Unchanged`, paged by `MAX_PAGE` = 100) and `largest_place` (the
-  Folders view: a folder's children, the home first, a folder opened through the breadcrumb). The items come from
+- **Three views** (the engine's `largest/`), each its own query: **Files** (`largest`: items below the home, ranked by
+  allocated size, ties in path order, filtered by kind, place and `Unchanged`, paged by `MAX_PAGE` = 100; a plain
+  folder is never one of them), **Folders** (`largest_folders`, plan 044, below) and **Browse** (`largest_place`: a
+  folder's children, the home first, a folder opened through the breadcrumb; read-only: no pick, only going in and
+  Show in Finder). The items come from
   `DiskState::items` (one depth-first pass over the committed tree, never entering owned nodes, links, hidden names,
   `Library`, `.Trash` or `.app` bundles), at the minimum of the setting `core.largest.min-size` (10, 50, 100, 500 MB or
   1 GB, default 100 MB), at most `MAX_ITEMS` = 10 000 kept, computed once per state and minimum and kept beside the
@@ -456,14 +468,44 @@ the user can choose one. The core judges, the UI renders.
   folder above the row whether it opens, so a row inside a package, a claimed folder or a protected place is never
   offered. A folder holding an ignored path is withheld but still opens; a folder holding any claimed node is
   withheld.
-- **The pick**: `pick_own_item(node)` is refused (`NotOwnItem`) unless the judgement answers offered at that moment.
+- **Folders** (plan 044; `largest/folders.rs`): the folders of the home that nothing changed in for long, so the user
+  can look at them in the Finder and decide; never removed from here. `DiskState::left_alone(root, rule, min, before)`
+  answers the highest folders below a root, read in full, of at least `min` allocated bytes, whose `newest` (above) is
+  older than `before` (`LeftAlone`: the folder and its newest change; largest first, ties in path order, no cap),
+  entering only what the items' rule enters (no package, link, hidden name or folded subtree). `min` is the setting
+  `core.largest.folder-min-size` (500 MB, 1, 5 or 10 GB; default 1 GB), `before` is the state's `taken` minus the days
+  of the stale projects' setting (`Settings::stale_days`; its definition `STALE_PROJECTS_UNUSED_FOR` lives in the core,
+  so the module and the engine read the same one), never the clock. The engine maps each answer by a verdict, the ignore
+  list read first:
+
+  | Answer                                          | Verdict | Why                                                                                       |
+  | ----------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+  | on the ignore list, or under an ignored folder  | drop    | never listed, even when it holds explained items (ignored wins)                           |
+  | holds an ignored path                           | enter   | not listed; its other children may be                                                     |
+  | offered, or withheld as holding explained items | list    | a plain folder of the user's, or one holding what Scan explains, with its whole size      |
+  | withheld, a standard folder or one above it     | enter   | not listed; its children may be                                                           |
+  | withheld for any other reason                   | drop    | explained, library, trash, hidden, app, link, not seen, protected: nor anything inside it |
+
+  A folder a cleanup removed is skipped. Nothing is kept beside the state: the page is computed per request
+  (`FoldersQuery { offset, limit }`, answered as `FoldersPage`: `FolderRow`s with the place from `~`, `newest`, `LeftFor`
+  in months under two years and then in years, and `project`, true when the folder holds a `.git` folder; and the
+  totals, the home's sizes, `min_size` and `days`, so the UI computes none).
+- **The pick**: `pick_own_item(node)` is refused (`NotOwnItem`) unless the judgement answers offered at that moment, and
+  for a plain folder always: only a file, a package or a folded subtree from Files can be picked, never a folder and
+  nothing from Browse.
   The answer is a finding of the core's category `core.own-file` (danger High, `Removal::MoveToTrash`), kept in
   `Results.own` apart from the scan's findings: never in a total, a card, the map or a findings page. The plan builder
   adds the picks still offered (judged again at prepare and at confirm); a removed pick leaves the lists until a
   rescan.
-- **The commands** are `get_largest`, `get_largest_place` and `pick_own_item` (`app/tauri/src/largest_commands.rs`).
-- **UI**: the screen `screens/largest/` (`Screen` `largest`; Files and Folders as tabs, the filters, a selection bar) and
-  the component `product/own-item-row/`; the sidebar lists Scan, Largest, Apps (plan 036), Review, Cleanups and Settings.
+- **The commands** are `get_largest`, `get_largest_folders`, `get_largest_place`, `pick_own_item` and `reveal_node`
+  (`app/tauri/src/largest_commands.rs`). `reveal_node(node)` shows a node below the home in the Finder
+  (`Engine::reveal_node`, through the system UI port): the UI names the id, the engine holds the path; it removes
+  nothing.
+- **UI**: the screen `screens/largest/` (`Screen` `largest`; Files, Folders and Browse as tabs; the filters and a
+  selection bar for Files' picks; `folders-list.tsx` with the usage bar and the three tiles, `browse-view.tsx` with no
+  tick, only Open and Show in Finder named "Show in Finder: {name}") and the components `product/own-item-row/`,
+  `product/folder-row/` (`FolderRow`) and `product/middle-path/` (a long place is cut in the middle, the last two
+  segments whole); the sidebar lists Scan, Largest, Apps (plan 036), Review, Cleanups and Settings.
 - **Shown while the build's `largest` flag is `shown`** (plan 043): the sidebar and the navigation leave Largest out
   otherwise. Largest is shown in 0.2.0 (hidden in 0.1.0). A pick is High, so its files are removable only while the
   build offers High: the core refuses `pick_own_item` (`HighWithheld`) while High is withheld. The two queries are

@@ -118,6 +118,17 @@ impl Tree {
         Ok(())
     }
 
+    /// Keeps the larger of the folder's newest change and `bits`.
+    pub(crate) fn join_newest(&mut self, index: NodeIndex, bits: i64) -> Result<(), TreeError> {
+        self.node_mut(index)?.join_newest(bits);
+        Ok(())
+    }
+
+    /// The newest change of anything inside the node; of its own listing until the tree is frozen. `None` for none.
+    pub(crate) fn newest(&self, index: NodeIndex) -> Option<Timestamp> {
+        self.node(index)?.newest()
+    }
+
     /// Records the times of the node's entry, for its matches; allowed on a frozen tree, as its modification time.
     pub(crate) fn set_times(&mut self, index: NodeIndex, times: Times) -> Result<(), TreeError> {
         self.node(index).ok_or(TreeError::NoSuchNode)?;
@@ -247,8 +258,8 @@ impl Tree {
     }
 
     /// Ends the build: sorts every folder's children by name bytes, then sums every subtree bottom-up and marks
-    /// `Partial` every node above one that was not read in full. Frees the spare capacity of every buffer. A frozen
-    /// tree is not changed again: a second call does nothing.
+    /// `Partial` every node above one that was not read in full. Every folder's newest change becomes its subtree's.
+    /// Frees the spare capacity of every buffer. A frozen tree is not changed again: a second call does nothing.
     pub(crate) fn freeze(&mut self) {
         if self.frozen {
             return;
@@ -452,6 +463,7 @@ impl Tree {
             let below = u32::from(node.flags.has(Flag::Folder));
             parent.folders = parent.folders.saturating_add(node.folders).saturating_add(below);
             parent.add_sums(node.sums());
+            parent.join_newest(node.newest);
             if node.flags.has(Flag::Partial) {
                 parent.flags.set(Flag::Partial);
             }

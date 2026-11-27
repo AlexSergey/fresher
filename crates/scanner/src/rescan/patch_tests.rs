@@ -3,7 +3,7 @@
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-use fresher_core::{CACHEDIR_SIGNATURE, Claim, KnownFolder, MarkerCheck, Match, Pattern};
+use fresher_core::{CACHEDIR_SIGNATURE, Claim, KnownFolder, MarkerCheck, Match, Pattern, Timestamp};
 
 use crate::matcher::testing::{interest, set_of};
 use crate::rescan::testing::Rig;
@@ -11,6 +11,38 @@ use crate::walk::tests::interests;
 
 /// A home with a whole dependency folder, two cache folders, a few plain folders and 16 empty ones.
 fn home() -> Rig {
+    let rig = unscanned_home();
+    rig.scan();
+    rig
+}
+
+/// The home of [`home`], with a file at `relative` changed at [`LATE`]; scanned once.
+fn home_with_late_file(relative: &str) -> Rig {
+    let rig = unscanned_home();
+    write_late(&rig, relative);
+    rig.scan();
+    rig
+}
+
+/// A change later than any file of a fixture: no status change of the test run reaches it.
+const LATE: u64 = 4_102_444_800;
+
+/// Writes a file at `relative` whose modification time is [`LATE`].
+fn write_late(rig: &Rig, relative: &str) {
+    let path = rig.path(relative);
+    std::fs::write(&path, b"late").unwrap();
+    let file = std::fs::OpenOptions::new().write(true).open(&path).unwrap();
+    file.set_modified(std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(LATE)).unwrap();
+}
+
+/// The newest change of the folder at `relative` in the tree `walked` gave.
+fn newest_at(rig: &Rig, walked: &crate::rescan::testing::Walked, relative: &str) -> Option<Timestamp> {
+    let tree = walked.tree.as_ref().unwrap();
+    tree.newest(tree.lookup(&rig.path(relative)).unwrap())
+}
+
+/// The home of [`home`], not scanned yet.
+fn unscanned_home() -> Rig {
     let mut toml = String::from(
         "[[file]]\npath = \"app/package.json\"\nsize = 10\n\
          [[file]]\npath = \"app/node_modules/a/index.js\"\nsize = 100\n\
@@ -24,9 +56,7 @@ fn home() -> Rig {
     for index in 0..16 {
         let _ = write!(toml, "[[dir]]\npath = \"x{index:02}\"\n");
     }
-    let rig = Rig::new(&toml, interests());
-    rig.scan();
-    rig
+    Rig::new(&toml, interests())
 }
 
 fn paths(rig: &Rig, relative: &[&str]) -> Vec<PathBuf> {
@@ -120,7 +150,12 @@ mod negative {
 
     use fresher_core::MarkerCheck;
 
-    use super::{Mode, assert_rescanned, facts_at, held_at, held_home, home, names, paths, write_tag};
+    use fresher_core::Timestamp;
+
+    use super::{
+        LATE, Mode, assert_rescanned, facts_at, held_at, held_home, home, home_with_late_file, names, newest_at, paths,
+        write_tag,
+    };
     use crate::rescan::testing::{assert_same, journal_of};
     use crate::walk::counting::CountingReader;
     use crate::walk::std_reader::StdReader;
@@ -267,6 +302,37 @@ mod negative {
         assert_rescanned(&rescan);
         assert_same(&rescan, &rig.full());
     }
+    #[test]
+    fn a_folder_read_again_forgets_the_time_of_a_file_that_went() {
+        let rig = home_with_late_file("docs/old/late.txt");
+        rig.remove(&rig.path("docs/old/late.txt"));
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &["docs/old"]), &[]));
+
+        let full = rig.full();
+        assert!(newest_at(&rig, &rescan, "docs/old") < Some(Timestamp::from_secs(LATE)));
+        assert_eq!(newest_at(&rig, &rescan, "docs/old"), newest_at(&rig, &full, "docs/old"));
+        assert_eq!(newest_at(&rig, &rescan, "docs"), newest_at(&rig, &full, "docs"), "its parent was read again");
+        assert_same(&rescan, &full);
+    }
+
+    #[test]
+    fn an_ancestor_of_a_folder_whose_new_file_went_is_never_older_than_the_truth() {
+        let rig = home_with_late_file("docs/old/deeper/late.txt");
+        rig.remove(&rig.path("docs/old/deeper/late.txt"));
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &["docs/old/deeper"]), &[]));
+
+        let full = rig.full();
+        for exact in ["docs/old/deeper", "docs/old"] {
+            assert_eq!(newest_at(&rig, &rescan, exact), newest_at(&rig, &full, exact), "{exact} was read again");
+        }
+        for kept in ["docs", ""] {
+            assert_eq!(newest_at(&rig, &rescan, kept), Some(Timestamp::from_secs(LATE)), "{kept:?} keeps its cache's");
+            assert!(newest_at(&rig, &full, kept) < Some(Timestamp::from_secs(LATE)));
+        }
+        assert_same(&rescan, &full);
+    }
 }
 
 mod positive {
@@ -275,11 +341,14 @@ mod positive {
 
     use fresher_core::{MarkerCheck, ScanCache, WalkMode};
 
-    use super::{Mode, assert_rescanned, held_at, held_home, home, names, paths};
+    use fresher_core::Timestamp;
+
+    use super::{LATE, Mode, assert_rescanned, held_at, held_home, home, names, newest_at, paths, write_late};
     use crate::codec::decode::decode;
     use crate::codec::fit::fully_collapsed;
     use crate::rescan::testing::{assert_same, journal_of};
     use crate::tree::node::Flag;
+    use crate::tree::testing::canonical;
     use crate::walk::std_reader::StdReader;
 
     #[test]
@@ -345,7 +414,7 @@ mod positive {
     #[test]
     fn a_rescan_after_one_file_changes_moves_its_folders_newest_change() {
         let rig = home();
-        let later = fresher_core::Timestamp::from_secs(4_102_444_800);
+        let later = Timestamp::from_secs(4_102_444_800);
         let file = OpenOptions::new().write(true).open(rig.path("app/node_modules/a/index.js")).unwrap();
         file.set_modified(std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(later.secs())).unwrap();
 
@@ -455,6 +524,54 @@ mod positive {
             rig.walk(&rig.scanner(Arc::new(StdReader::new()), Arc::new(journal_of(&[], &[]))), WalkMode::Auto).matches,
             rescan.matches
         );
+    }
+    #[test]
+    fn a_new_file_makes_every_ancestor_newer() {
+        let rig = home();
+        write_late(&rig, "docs/old/deeper/late.txt");
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &["docs/old/deeper"]), &[]));
+
+        for folder in ["docs/old/deeper", "docs/old", "docs", ""] {
+            assert_eq!(newest_at(&rig, &rescan, folder), Some(Timestamp::from_secs(LATE)), "{folder:?}");
+        }
+        assert!(newest_at(&rig, &rescan, "app") < Some(Timestamp::from_secs(LATE)));
+        assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn an_unchanged_folder_keeps_its_newest() {
+        let rig = home();
+        let cached = rig.cached().tree;
+        let before = cached.newest(cached.lookup(&rig.path("app")).unwrap());
+        write_late(&rig, "docs/late.txt");
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&paths(&rig, &["docs"]), &[]));
+
+        assert!(before.is_some());
+        assert_eq!(newest_at(&rig, &rescan, "app"), before);
+        assert_eq!(newest_at(&rig, &rescan, "app/node_modules"), newest_at(&rig, &rig.full(), "app/node_modules"));
+        assert_same(&rescan, &rig.full());
+    }
+
+    #[test]
+    fn a_patch_with_nothing_removed_matches_a_full_scans_newest() {
+        let rig = home();
+        write_late(&rig, "docs/old/late.txt");
+        std::fs::write(rig.path("Library/Caches/com.x/more.bin"), vec![0; 40]).unwrap();
+        std::fs::create_dir_all(rig.path("x03/new")).unwrap();
+        write_late(&rig, "x03/new/late.txt");
+        let changed = paths(&rig, &["docs/old", "Library/Caches/com.x", "x03", "x03/new"]);
+
+        let rescan = rig.rescan(Arc::new(StdReader::new()), journal_of(&changed, &[]));
+
+        let full = rig.full();
+        let newest = |walked: &crate::rescan::testing::Walked| {
+            canonical(walked.tree.as_ref().unwrap()).into_iter().map(|shape| (shape.path, shape.newest)).collect()
+        };
+        let (patched, scanned): (Vec<_>, Vec<_>) = (newest(&rescan), newest(&full));
+        assert_eq!(patched, scanned);
+        assert_same(&rescan, &full);
     }
 }
 

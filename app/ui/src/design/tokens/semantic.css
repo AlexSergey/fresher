@@ -105,6 +105,10 @@
     --part-swap-and-sleep: var(--teal-400);
     --part-other-volume: var(--stone-400);
     --part-disk-own: var(--slate-500);
+    /* The first three parts' colours at 14 %: the chips of the icons that take their colour. */
+    --part-files-and-apps-chip: var(--blue-400-a14);
+    --part-mac-os-chip: var(--violet-400-a14);
+    --part-system-space-chip: var(--pink-400-a14);
     --tone-free-outline: var(--gray-500);
     --tone-unknown-stroke: var(--gray-600);
     --tone-unknown: repeating-linear-gradient(135deg, var(--gray-600) 0 2px, var(--gray-700) 2px 4px);

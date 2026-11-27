@@ -4,8 +4,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fresher_core::Protection;
 use fresher_core::{
-    ByteSize, CategoryId, ChildOrder, DangerLevel, DiskState, ItemRule, LargestPage, LargestQuery, ModuleId, NodeId,
-    NodeInfo, NodeKind, NodePage, OwnPlace, Sizes, StateId, Timestamp, Unchanged, UnreadablePlace,
+    ByteSize, CategoryId, ChildOrder, DangerLevel, DiskState, ItemRule, LargestPage, LargestQuery, LeftAlone, ModuleId,
+    NodeId, NodeInfo, NodeKind, NodePage, OwnPlace, Sizes, StateId, Timestamp, Unchanged, UnreadablePlace,
 };
 use fresher_testing::FixedDiskState;
 use serde_json::json;
@@ -239,6 +239,16 @@ impl DiskState for Counting {
     fn items(&self, root: NodeId, rule: &dyn ItemRule, min: ByteSize, limit: u32) -> Option<Vec<NodeId>> {
         self.items.fetch_add(1, Ordering::SeqCst);
         self.inner.items(root, rule, min, limit)
+    }
+
+    fn left_alone(
+        &self,
+        root: NodeId,
+        rule: &dyn ItemRule,
+        min: ByteSize,
+        before: Timestamp,
+    ) -> Option<Vec<LeftAlone>> {
+        self.inner.left_alone(root, rule, min, before)
     }
 }
 
@@ -526,7 +536,9 @@ mod folders {
 
         use fresher_core::{CommandError, Offer, Withheld};
 
-        use super::super::{home, ignoring_build, ignoring_caches, node, projects, scanned, scanned_with, vault};
+        use super::super::{
+            home, ignoring_build, ignoring_caches, node, projects, query, scanned, scanned_with, vault,
+        };
 
         #[test]
         fn the_library_does_not_open() {
@@ -590,7 +602,7 @@ mod folders {
         fn a_file_under_a_folder_that_does_not_open_is_not_offered_in_files() {
             let engine = super::super::scanned_protecting(vault(), "/home/Vault/keep");
 
-            let page = engine.largest(&super::super::query()).unwrap();
+            let page = engine.largest(&query()).unwrap();
             let vault = node(&engine, "/home/Vault");
 
             assert_eq!(page.rows.len(), 1);
@@ -605,6 +617,20 @@ mod folders {
             let file = node(&engine, "/home/top.iso");
 
             assert_eq!(engine.largest_place(Some(file), 0, 10), Err(CommandError::NotOwnItem));
+        }
+
+        #[test]
+        fn a_browse_row_carries_no_pick() {
+            let engine = scanned(home(1));
+            let movie = engine.largest(&query()).unwrap().rows.into_iter().find(|row| row.node.name == "movie.mov");
+            engine.pick_own_item(movie.unwrap().node.id).unwrap();
+
+            let place = engine.largest_place(Some(node(&engine, "/home/Downloads")), 0, 10).unwrap();
+
+            assert!(place.rows.iter().any(|row| row.node.name == "movie.mov"));
+            for row in &place.rows {
+                assert!(serde_json::to_value(row).unwrap().get("picked").is_none(), "{}", row.node.name);
+            }
         }
     }
 

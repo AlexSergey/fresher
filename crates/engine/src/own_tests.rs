@@ -21,7 +21,7 @@ fn mb(size: u64) -> Sizes {
 }
 
 /// A state `id` of `/home`: a claimed `Caches`, a folder holding a claimed one, Documents, Library, a hidden file,
-/// Downloads with a movie, and a project folder with an archive in it.
+/// Downloads with a movie, a project folder with an archive in it, and a folder with a photo library.
 fn home(id: u32) -> FixedDiskState {
     let nodes = [
         ("/home", NodeKind::Folder, 2_000),
@@ -39,6 +39,8 @@ fn home(id: u32) -> FixedDiskState {
         ("/home/Projects", NodeKind::Folder, 350),
         ("/home/Projects/old", NodeKind::Folder, 350),
         ("/home/Projects/old/build.tar", NodeKind::File, 350),
+        ("/home/Photos", NodeKind::Folder, 150),
+        ("/home/Photos/Trip.photoslibrary", NodeKind::Folder, 150),
     ];
     FixedDiskState::new(
         StateId::new(id),
@@ -142,6 +144,15 @@ mod negative {
         let engine = scanned();
 
         for path in ["/home/Caches", "/home/Caches/blob.bin", "/home/Work/node_modules"] {
+            assert_eq!(engine.pick_own_item(node(&engine, path)), Err(CommandError::NotOwnItem), "{path}");
+        }
+    }
+
+    #[test]
+    fn a_plain_folder_is_not_picked() {
+        let engine = scanned();
+
+        for path in ["/home/Projects", "/home/Projects/old", "/home/Photos"] {
             assert_eq!(engine.pick_own_item(node(&engine, path)), Err(CommandError::NotOwnItem), "{path}");
         }
     }
@@ -275,7 +286,7 @@ mod positive {
 
     use fresher_core::{
         DangerLevel, Event, FindingId, LargestQuery, ModuleId, NodeId, NodeInfo, NodeKind, OWN_FILE_ID, Removability,
-        Removal, SkipReason, StateId, Subject, TextArg, Unchanged,
+        Removal, StateId, Subject, TextArg, Unchanged,
     };
 
     use super::{fixture, home, mb, node, pick, scanned, scanned_fixture};
@@ -322,16 +333,14 @@ mod positive {
     }
 
     #[test]
-    fn a_picked_row_is_marked_in_files_and_folders() {
+    fn a_picked_row_is_marked_in_files() {
         let engine = scanned();
         let movie = pick(&engine, "/home/Downloads/movie.mov");
 
         let files = engine.largest(&query()).unwrap();
-        let folder = engine.largest_place(Some(node(&engine, "/home/Downloads")), 0, 10).unwrap();
 
         let marked = files.rows.iter().find(|row| row.node.name == "movie.mov").map(|row| row.picked);
         assert_eq!(marked, Some(Some(movie.id())));
-        assert_eq!(folder.rows.iter().map(|row| row.picked).collect::<Vec<_>>(), [Some(movie.id())]);
         assert!(files.rows.iter().filter(|row| row.node.name != "movie.mov").all(|row| row.picked.is_none()));
     }
 
@@ -359,20 +368,6 @@ mod positive {
         planned.sort_unstable();
         assert_eq!(planned, [1, movie.id().get()]);
         assert_eq!(view.summary.highest, DangerLevel::High);
-    }
-
-    #[test]
-    fn a_picked_row_inside_a_picked_folder_is_covered() {
-        let engine = scanned();
-        let old = pick(&engine, "/home/Projects/old");
-        let tar = pick(&engine, "/home/Projects/old/build.tar");
-
-        let view = engine.prepare_cleanup(&select(&[tar.id().get(), old.id().get()], &[])).unwrap();
-
-        assert_eq!(items(&view), [old.id().get()]);
-        assert_eq!(view.left_out.len(), 1);
-        assert_eq!(view.left_out[0].finding(), tar.id());
-        assert_eq!(view.left_out[0].reason(), &SkipReason::Covered);
     }
 
     #[test]
@@ -472,13 +467,25 @@ mod positive {
     }
 
     #[test]
+    fn a_package_is_still_picked() {
+        let engine = scanned();
+
+        let library = pick(&engine, "/home/Photos/Trip.photoslibrary");
+
+        assert_eq!(library.finding().subject(), &Subject::Path(PathBuf::from("/home/Photos/Trip.photoslibrary")));
+    }
+
+    #[test]
     fn a_picked_folder_reads_as_a_folder() {
         let engine = scanned();
 
-        let old = pick(&engine, "/home/Projects/old");
+        let library = pick(&engine, "/home/Photos/Trip.photoslibrary");
 
-        assert_eq!(old.finding().reason().key().as_str(), "core.own-file.reason.folder");
-        assert_eq!(old.finding().removal(), &Removal::MoveToTrash(PathBuf::from("/home/Projects/old")));
+        assert_eq!(library.finding().reason().key().as_str(), "core.own-file.reason.folder");
+        assert_eq!(
+            library.finding().removal(),
+            &Removal::MoveToTrash(PathBuf::from("/home/Photos/Trip.photoslibrary"))
+        );
     }
 
     #[test]

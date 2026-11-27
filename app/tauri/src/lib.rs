@@ -94,6 +94,8 @@ fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         largest_commands::get_largest,
         largest_commands::get_largest_place,
         largest_commands::pick_own_item,
+        largest_commands::get_largest_folders,
+        largest_commands::reveal_node,
         apps_commands::get_apps,
         apps_commands::get_app,
         apps_commands::reveal_app,

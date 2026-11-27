@@ -1,7 +1,7 @@
 mod negative {
     use std::path::Path;
 
-    use fresher_core::{Completeness, EntryKind, FolderIdentity, Unreadable};
+    use fresher_core::{Completeness, EntryKind, FolderIdentity, Timestamp, Unreadable};
 
     use crate::tree::TreeError;
     use crate::tree::arena::Tree;
@@ -57,6 +57,17 @@ mod negative {
         tree.freeze();
         assert_eq!(tree.lookup(Path::new("/home/user/Lib")), None);
         assert_eq!(tree.lookup(Path::new("/home/us/Library")), None);
+    }
+
+    #[test]
+    fn an_unfrozen_folder_holds_only_its_own_newest() {
+        let (mut tree, root) = rooted("/home");
+        let folder = tree.add_child(root, b"a", EntryKind::Folder).unwrap();
+        tree.join_newest(root, 10).unwrap();
+        tree.join_newest(folder, 99).unwrap();
+        assert_eq!(tree.newest(root), Some(Timestamp::from_secs(10)));
+        assert_eq!(tree.newest(folder), Some(Timestamp::from_secs(99)));
+        assert_eq!(tree.newest(NodeIndex::NONE), None);
     }
 
     #[test]
@@ -214,6 +225,31 @@ mod positive {
     }
 
     #[test]
+    fn freeze_takes_the_newest_of_every_subtree() {
+        let (mut tree, root) = rooted("/home");
+        let library = tree.add_child(root, b"Library", EntryKind::Folder).unwrap();
+        let caches = tree.add_child(library, b"Caches", EntryKind::Folder).unwrap();
+        let empty = tree.add_child(root, b"empty", EntryKind::Folder).unwrap();
+        tree.join_newest(root, 10).unwrap();
+        tree.join_newest(caches, 70).unwrap();
+        tree.join_newest(library, 30).unwrap();
+        tree.freeze();
+        let secs = |index| tree.newest(index).map(Timestamp::secs);
+        assert_eq!((secs(caches), secs(library), secs(root)), (Some(70), Some(70), Some(70)));
+        assert_eq!(secs(empty), None);
+    }
+
+    #[test]
+    fn freeze_twice_keeps_the_newest() {
+        let (mut tree, root) = rooted("/home");
+        let folder = tree.add_child(root, b"a", EntryKind::Folder).unwrap();
+        tree.join_newest(folder, 5).unwrap();
+        tree.freeze();
+        tree.freeze();
+        assert_eq!(tree.newest(root), Some(Timestamp::from_secs(5)));
+    }
+
+    #[test]
     fn heap_bytes_per_node_stays_under_96() {
         const NODES: usize = 100_000;
         let (mut tree, root) = rooted("/home/user");
@@ -248,12 +284,12 @@ mod property {
     use crate::tree::testing::{canonical, rooted, sums};
 
     /// One node of a random tree: which earlier folder is its parent, whether it is a folder, and its own bytes.
-    type Spec = (usize, bool, Sums);
+    type Spec = (usize, bool, Sums, i64);
 
     fn specs() -> impl Strategy<Value = Vec<Spec>> {
         let own = (0..1000_u32, 0..1_u64 << 40, 0..1_u64 << 40, 0..1_u64 << 40)
             .prop_map(|(files, logical, allocated, reclaimable)| sums(files, logical, allocated, reclaimable));
-        prop::collection::vec((any::<usize>(), any::<bool>(), own), 0..200)
+        prop::collection::vec((any::<usize>(), any::<bool>(), own, prop_oneof![Just(i64::MIN), 0..1_i64 << 40]), 0..200)
     }
 
     /// Builds the tree of `specs`; in `reversed`, every folder's children are added in the opposite order.
@@ -261,7 +297,7 @@ mod property {
         let (mut tree, root) = rooted("/r");
         let mut parents = vec![None; specs.len()];
         let mut folders: Vec<Option<usize>> = vec![None];
-        for (position, &(choice, folder, _)) in specs.iter().enumerate() {
+        for (position, &(choice, folder, ..)) in specs.iter().enumerate() {
             parents[position] = folders[choice % folders.len()];
             if folder {
                 folders.push(Some(position));
@@ -276,11 +312,12 @@ mod property {
             }
             let parent_index = parent.map_or(root, |parent| indices[parent]);
             for child in children {
-                let (_, folder, own) = specs[child];
+                let (_, folder, own, newest) = specs[child];
                 let kind = if folder { EntryKind::Folder } else { EntryKind::File };
                 let index = tree.add_child(parent_index, format!("n{child}").as_bytes(), kind).unwrap();
                 let own = if folder { own } else { Sums { files: 0, ..own } };
                 tree.add_own(index, own).unwrap();
+                tree.join_newest(index, newest).unwrap();
                 indices[child] = index;
                 if folder {
                     queue.push(Some(child));
@@ -295,22 +332,30 @@ mod property {
         #[test]
         fn totals_equal_the_sum_of_the_leaves(specs in specs()) {
             let tree = build(&specs, false);
-            let expected = specs.iter().fold(Sums::ZERO, |total, &(_, folder, own)| {
+            let expected = specs.iter().fold(Sums::ZERO, |total, &(_, folder, own, _)| {
                 let own = if folder { own } else { Sums { files: 1, ..own } };
                 total.checked_add(own).unwrap()
             });
             let root = tree.roots()[0].node;
             prop_assert_eq!(tree.sums(root), Some(expected));
-            let folders = specs.iter().filter(|&&(_, folder, _)| folder).count();
+            let folders = specs.iter().filter(|&&(_, folder, ..)| folder).count();
             prop_assert_eq!(tree.node(root).unwrap().folders as usize, folders);
         }
 
         #[test]
         fn freeze_is_idempotent(specs in specs()) {
             let mut tree = build(&specs, false);
-            let once = canonical(&tree);
+            let newest = |tree: &Tree| (0..tree.len()).map(|at| tree.newest(NodeIndex::new(at).unwrap())).collect::<Vec<_>>();
+            let once = (canonical(&tree), newest(&tree));
             tree.freeze();
-            prop_assert_eq!(canonical(&tree), once);
+            prop_assert_eq!((canonical(&tree), newest(&tree)), once);
+        }
+
+        #[test]
+        fn the_root_newest_is_the_newest_of_every_node(specs in specs()) {
+            let tree = build(&specs, false);
+            let expected = specs.iter().map(|&(.., newest)| newest).max().and_then(crate::tree::node::time_of);
+            prop_assert_eq!(tree.newest(tree.roots()[0].node), expected);
         }
 
         #[test]

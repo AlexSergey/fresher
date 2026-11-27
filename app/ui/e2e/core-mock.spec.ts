@@ -9,6 +9,7 @@ import type {
   Finding,
   FindingsPage,
   FindingsQuery,
+  FoldersPage,
   LargestPage,
   LargestQuery,
   Overview,
@@ -22,7 +23,7 @@ import { DEMO_MAP_NO_SCAN } from '../src/test/storage-map';
 import { firstRelease, mockCore, SCRIPTS, withheld } from './core-mock';
 import { acceptedVersions } from './support/agreement-mock';
 import { scanButton } from './support/cards';
-import { largestAnswerOf, pickAnswerOf, placeAnswerOf } from './support/largest-mock';
+import { largestAnswerOf, pickAnswerOf, placeAnswerOf, revealed } from './support/largest-mock';
 
 // The mocked core pages through a scan's findings as the engine does, so the e2e tests of the lists page for real.
 
@@ -251,6 +252,41 @@ test.describe('negative cases', () => {
     expect(await getFindings(page, QUERY)).toEqual({ findings: [], offset: 100, total: 0 });
   });
 
+  test('the folders are refused before a scan', async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+
+    const refusal = await refusalOf(page, COMMANDS.getLargestFolders, { query: { limit: 100, offset: 0 } });
+
+    expect(refusal).toMatchObject({ error: { code: 'no-scan' } });
+  });
+
+  test('a reveal is refused before a scan', async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+
+    const refusal = await refusalOf(page, COMMANDS.revealNode, { node: { index: 202, state: 1 } });
+
+    expect(refusal).toMatchObject({ error: { code: 'no-scan' } });
+    expect(await revealed(page)).toStrictEqual([]);
+  });
+
+  test('a reveal of an unlisted node is refused', async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+    await call(page, COMMANDS.startScan, {});
+
+    const refusals = await Promise.all(
+      [
+        { index: 999, state: 1 },
+        { index: 202, state: 2 },
+      ].map((node) => refusalOf(page, COMMANDS.revealNode, { node })),
+    );
+
+    expect(refusals).toMatchObject([{ error: { code: 'stale-node' } }, { error: { code: 'stale-node' } }]);
+    expect(await revealed(page)).toStrictEqual([]);
+  });
+
   test('a withheld row is never picked, and an unknown node either', async ({ page }) => {
     await mockCore(page, SCRIPTS.largest);
     await page.goto('/');
@@ -294,6 +330,10 @@ test.describe('negative cases', () => {
   test('a folder that does not open is refused as the core refuses it', () => {
     expect(placeAnswerOf({ index: 11, state: 1 }, 0, 100)).toBe('not-own-item');
     expect(placeAnswerOf({ index: 999, state: 1 }, 0, 100)).toBe('stale-node');
+  });
+
+  test('a plain folder is refused', () => {
+    expect(pickAnswerOf({ index: 11, state: 1 })).toBeNull();
   });
 
   test('a file that is not offered has no pick', () => {
@@ -457,6 +497,42 @@ test.describe('positive cases', () => {
         ...SCAN.overview,
         lastScan: SCAN.overview.lastScan === null ? null : { ...SCAN.overview.lastScan, finished: 0 },
       });
+  });
+
+  test('the folders come largest first, a page at a time', async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+    await call(page, COMMANDS.startScan, {});
+
+    const first = await call<FoldersPage>(page, COMMANDS.getLargestFolders, { query: { limit: 2, offset: 0 } });
+    const second = await call<FoldersPage>(page, COMMANDS.getLargestFolders, { query: { limit: 2, offset: 2 } });
+    const names = (answered: FoldersPage): string[] => answered.rows.map((row) => row.node.name);
+
+    expect(names(first)).toStrictEqual(['Archive', 'old-app']);
+    expect(names(second)).toStrictEqual(['Renders', 'datasets']);
+    expect([first.total, first.offset, second.offset]).toStrictEqual([5, 0, 2]);
+    expect(first).toMatchObject({ days: 365, minSize: 1_000_000_000, projects: 2 });
+  });
+
+  test('a reveal of a listed folder is recorded', async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+    await call(page, COMMANDS.startScan, {});
+
+    await call(page, COMMANDS.revealNode, { node: { index: 202, state: 1 } });
+    await call(page, COMMANDS.revealNode, { node: { index: 201, state: 1 } });
+
+    expect(await revealed(page)).toStrictEqual([202, 201]);
+  });
+
+  test('a reveal of a node of the tree is recorded', async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+    await call(page, COMMANDS.startScan, {});
+
+    await call(page, COMMANDS.revealNode, { node: { index: 15, state: 1 } });
+
+    expect(await revealed(page)).toStrictEqual([15]);
   });
 
   test('the Files list keeps the rows under the kind, the place and the unchanged filters, largest first', () => {

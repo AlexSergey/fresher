@@ -15,8 +15,6 @@ Postponed:
 - **A treemap** of the same rows.
 - **A sync client's folder marker** in the home: a legacy sync client's folder is offered like any other folder today.
 - **Places outside the home**: other scan roots and volumes.
-- **A folder's "Changed" from its newest file**: today it is the folder's own time
-  ([`folder-age-from-children.md`](./folder-age-from-children.md)).
 
 ## What doing it needs
 

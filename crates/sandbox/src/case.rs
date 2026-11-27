@@ -480,7 +480,13 @@ pub fn merged_settings(files: &[CaseFile]) -> Result<BTreeMap<String, toml::Valu
     Ok(merged)
 }
 
-/// Every key is `<module>.<name>` in kebab case and every value a bool, an integer or a string.
+/// Whether `path` has a `..` component: a `~/..` would leave the sandbox's home.
+fn has_parent_step(path: &str) -> bool {
+    Path::new(path).components().any(|part| part == Component::ParentDir)
+}
+
+/// Every key is `<module>.<name>` in kebab case and every value a bool, an integer or a string; the list of paths to
+/// ignore (`core.ignore.paths`) is a list of strings.
 fn check_settings(settings: &BTreeMap<String, toml::Value>) -> Result<(), CaseError> {
     for (key, value) in settings {
         if SettingKey::new(key.as_str()).is_err() {
@@ -489,7 +495,15 @@ fn check_settings(settings: &BTreeMap<String, toml::Value>) -> Result<(), CaseEr
         if [fresher_core::AGREEMENT_VERSION_KEY, fresher_core::AGREEMENT_ACCEPTED_AT].contains(&key.as_str()) {
             return Err(CaseError::AgreementSetting { key: key.clone() });
         }
-        if !matches!(value, toml::Value::Boolean(_) | toml::Value::Integer(_) | toml::Value::String(_)) {
+        let allowed = match value {
+            toml::Value::Boolean(_) | toml::Value::Integer(_) | toml::Value::String(_) => true,
+            toml::Value::Array(paths) => {
+                key == fresher_core::IGNORE_PATHS
+                    && paths.iter().all(|path| path.as_str().is_some_and(|path| !has_parent_step(path)))
+            }
+            _ => false,
+        };
+        if !allowed {
             return Err(CaseError::SettingValue { key: key.clone() });
         }
     }
@@ -507,6 +521,7 @@ impl Case {
         let receipts = take_receipts(&name, &mut raw.files)?;
         let tools = take_tools(&name, &mut raw.files)?;
         let insights = take_insights(&name, &mut raw.files)?;
+        check_changed(&name, &raw.files)?;
         let tree: TreeDescription = toml::Value::Table(raw.files)
             .try_into()
             .map_err(|source| CaseError::Files { case: name.clone(), source: Box::new(source) })?;
@@ -536,6 +551,8 @@ impl Case {
             (CaseKind::Negative, Some(_)) => return Err(CaseError::NegativeWithExpect { case: name }),
             // A positive uninstall is checked on the Apps screen: its own expectation.
             (CaseKind::Positive, None) if uninstall.is_some() => None,
+            // A positive folder left alone is checked on the Folders list: nothing is chosen, so nothing is cleaned.
+            (CaseKind::Positive, None) if raw.largest.as_ref().is_some_and(RawLargest::lists_a_folder) => None,
             (CaseKind::Positive, None) => return Err(CaseError::PositiveWithoutExpect { case: name }),
             (CaseKind::Negative | CaseKind::Scenery, _) => None,
             (CaseKind::Positive, Some(raw)) => Some(PendingExpectation::from_raw(&name, &tree, raw)?),
@@ -903,6 +920,28 @@ pub(crate) fn is_pkg_name(name: &str) -> bool {
     is_bundle_name(name) && name.strip_suffix(".pkg").is_some_and(|stem| !stem.is_empty())
 }
 
+/// Checks the `changed` of every `[[case.file]]` and `[[case.dir]]`: an age, only beside an `age`, and not older than
+/// it (a change is never before the modification), unless the `age` is a time after the sandbox's (`"-2d"`: an item of
+/// a future time, whose change the case states as old as it needs). One that is not an age is the tree's to refuse.
+fn check_changed(case: &str, files: &toml::Table) -> Result<(), CaseError> {
+    let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1 << 40);
+    for entry in ["file", "dir"].into_iter().filter_map(|key| files.get(key)?.as_array()).flatten() {
+        let text = |key: &str| entry.get(key).and_then(toml::Value::as_str);
+        let Some(changed) = text("changed") else { continue };
+        let path = PathBuf::from(text("path").unwrap_or_default());
+        let Some(age) = text("age") else {
+            return Err(CaseError::ChangedWithoutAge { case: case.into(), path });
+        };
+        if let (Some(changed), Some(age)) = (time_at_age(changed, now), time_at_age(age, now))
+            && changed < age
+            && age <= now
+        {
+            return Err(CaseError::ChangedOlderThanAge { case: case.into(), path });
+        }
+    }
+    Ok(())
+}
+
 /// Removes `[[case.receipt]]` from the case's files and checks each: a package that is one plain file name ending in
 /// `.pkg`, and an age it was installed at.
 fn take_receipts(case: &str, files: &mut toml::Table) -> Result<Vec<(String, String)>, CaseError> {
@@ -1172,6 +1211,53 @@ after-cleanup = "in-trash"
                 let error = refused(&text);
 
                 assert!(matches!(&error, CaseError::SettingValue { key } if key == "demo.count"), "{value}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_list_setting_other_than_the_ignored_paths_is_refused() {
+            for (key, value) in [
+                ("demo.count", "[\"a\"]"),
+                ("core.ignore.paths", "[1]"),
+                ("core.ignore.paths", "[[\"a\"]]"),
+                ("core.ignore.paths", "{ a = \"b\" }"),
+                ("core.ignore.paths", "[\"~/../x\"]"),
+            ] {
+                let text = format!("{}[settings]\n\"{key}\" = {value}\n", file(&[NEGATIVE]));
+
+                let error = refused(&text);
+
+                assert!(matches!(&error, CaseError::SettingValue { key: found } if found == key), "{value}: {error}");
+            }
+        }
+
+        #[test]
+        fn changed_without_an_age_is_refused() {
+            for kind in ["file", "dir"] {
+                let case = format!(
+                    "[[case]]\nname = \"c\"\nkind = \"negative\"\n[[case.{kind}]]\npath = \"home/a\"\nchanged = \"1d\"\n"
+                );
+
+                let error = refused(&file(&[&case]));
+
+                assert!(matches!(&error, CaseError::ChangedWithoutAge { case, .. } if case == "c"), "{kind}: {error}");
+            }
+        }
+
+        #[test]
+        fn changed_older_than_the_age_is_refused() {
+            for kind in ["file", "dir"] {
+                let case = format!(
+                    "[[case]]\nname = \"c\"\nkind = \"negative\"\n[[case.{kind}]]\npath = \"home/a\"\nage = \"1d\"\n\
+                     changed = \"2d\"\n"
+                );
+
+                let error = refused(&file(&[&case]));
+
+                assert!(
+                    matches!(&error, CaseError::ChangedOlderThanAge { case, .. } if case == "c"),
+                    "{kind}: {error}"
+                );
             }
         }
 
@@ -1828,6 +1914,32 @@ after-cleanup = "in-trash"
                 ]
             );
             assert_eq!(parsed.cases().len(), 2);
+        }
+
+        #[test]
+        fn the_ignored_paths_are_a_list_of_strings() {
+            let text =
+                format!("{}[settings]\n\"core.ignore.paths\" = [\"~/Old-tools\", \"/tmp/x\"]\n", file(&[NEGATIVE]));
+
+            let parsed = CaseFile::parse(&text).unwrap();
+
+            let paths = vec![toml::Value::String("~/Old-tools".into()), toml::Value::String("/tmp/x".into())];
+            assert_eq!(parsed.settings()["core.ignore.paths"], toml::Value::Array(paths));
+        }
+
+        #[test]
+        fn changed_is_read_as_an_age() {
+            // The last: an item of a future time, whose change is older than its age.
+            for (age, changed) in [("400d", "400d"), ("400d", "1d"), ("400d", "-1d"), ("2d", "2d"), ("-2d", "30d")] {
+                let case = format!(
+                    "[[case]]\nname = \"c\"\nkind = \"negative\"\n[[case.file]]\npath = \"home/a\"\nage = \"{age}\"\n\
+                     changed = \"{changed}\"\n"
+                );
+
+                let parsed = CaseFile::parse(&file(&[&case])).unwrap();
+
+                assert_eq!(parsed.cases()[0].tree().files().count(), 1, "{age}/{changed}");
+            }
         }
 
         #[test]

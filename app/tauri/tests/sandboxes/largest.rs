@@ -1,12 +1,13 @@
 //! The Largest screen of a case file's sandbox, read after the scan and before the cleanup: every `[case.largest]`
-//! holds in the Files list or the Folders view, and the positives of the core's own category are picked there, as a
-//! tick on the screen does, so the cleanup takes them through the confirmed plan.
+//! holds in the Files list, the Folders list (the folders left alone) or the Browse view, and the positives of the
+//! core's own category are picked on the Files list, as a tick on the screen does, so the cleanup takes them through
+//! the confirmed plan.
 
 use std::path::{Path, PathBuf};
 
 use fresher_core::{
-    Capability, DiskState, Finding, GuardedFolder, LargestQuery, LargestRow, NodeId, NodeKind, NotEntered, OWN_FILE_ID,
-    Offer, OwnRow, Unchanged,
+    Capability, DiskState, Finding, FolderRow, FoldersQuery, GuardedFolder, LargestQuery, LargestRow, NodeId, NodeKind,
+    NotEntered, OWN_FILE_ID, Offer, OwnRow, Unchanged,
 };
 use fresher_engine::Engine;
 use fresher_sandbox::{Case, CaseFile, LargestExpectation, Shown};
@@ -17,8 +18,9 @@ use crate::harness::{Failure, failure, relative};
 /// The rows one call asks for: the most a page holds.
 const PAGE: u32 = 100;
 
-/// Checks every `[case.largest]` of `file` and picks every positive of `core.own-file`: the report (the Files rows and
-/// the Folders rows checked) and the picks' findings; `(None, [])` for a file with no `[case.largest]`.
+/// Checks every `[case.largest]` of `file` and picks every positive of `core.own-file`: the report (the Files rows,
+/// the Browse rows checked and, for a file that lists or unlists a folder, the Folders list) and the picks' findings;
+/// `(None, [])` for a file with no `[case.largest]`.
 pub(crate) fn check_largest(
     name: &str,
     file: &CaseFile,
@@ -33,6 +35,7 @@ pub(crate) fn check_largest(
         .map_err(|error| failure(name, format!("{error:?}")))?
         .ok_or_else(|| failure(name, "the scan committed no disk state"))?;
     let listed = Listed::read(name, engine, &*state)?;
+    let folders = Folders::read(name, engine, &*state)?;
     let not_entered = engine
         .overview()
         .map_err(|error| failure(name, format!("{error:?}")))?
@@ -46,7 +49,7 @@ pub(crate) fn check_largest(
         let at = sandbox.join(expect.at());
         let folder =
             state.find(&at).and_then(|node| state.node(node)).is_some_and(|node| node.kind == NodeKind::Folder);
-        if check_case(case, expect, &at, folder, &listed, &not_entered, sandbox)? == Next::FolderRow {
+        if check_case(case, expect, &at, folder, (&listed, &folders), &not_entered, sandbox)? == Next::FolderRow {
             let row = folder_row(case, engine, &*state, &at, &home)?;
             check_folder_row(case.name(), expect, &row)?;
             places.push(json!({
@@ -72,7 +75,20 @@ pub(crate) fn check_largest(
             })
         })
         .collect();
-    Ok((Some(json!({ "files": files, "places": places })), picks))
+    let mut report = json!({ "files": files, "places": places });
+    if file
+        .cases()
+        .iter()
+        .filter_map(Case::largest)
+        .any(|expect| matches!(expect.shown(), Shown::Listed | Shown::Unlisted))
+    {
+        report["folders"] = folders
+            .rows
+            .iter()
+            .map(|(path, row)| json!({ "path": relative(path, sandbox), "project": row.project }))
+            .collect();
+    }
+    Ok((Some(report), picks))
 }
 
 /// The whole Files list of the last state, no filter, every page, each row with its path.
@@ -109,24 +125,55 @@ impl Listed {
     }
 }
 
+/// The whole Folders list of the last state, every page, each row with its path.
+struct Folders {
+    rows: Vec<(PathBuf, FolderRow)>,
+}
+
+impl Folders {
+    fn read(name: &str, engine: &Engine, state: &dyn DiskState) -> Result<Self, Failure> {
+        let mut rows = Vec::new();
+        loop {
+            let offset = u32::try_from(rows.len()).map_err(|error| failure(name, error))?;
+            let page = engine
+                .largest_folders(FoldersQuery { offset, limit: PAGE })
+                .map_err(|error| failure(name, format!("Largest → Folders: {error:?}")))?;
+            let done = page.rows.is_empty() || offset + u32::try_from(page.rows.len()).unwrap_or(0) >= page.total;
+            for row in page.rows {
+                let path = state
+                    .path(row.node.id)
+                    .ok_or_else(|| failure(name, format!("Folders: the row {} has no path", row.node.name)))?;
+                rows.push((path, row));
+            }
+            if done {
+                return Ok(Self { rows });
+            }
+        }
+    }
+
+    fn at(&self, path: &Path) -> Option<&FolderRow> {
+        self.rows.iter().find(|(row, _)| row == path).map(|(_, row)| row)
+    }
+}
+
 /// What is left to check of a case once the Files list is read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Next {
     /// Nothing: the expectation holds.
     Done,
-    /// The Folders row at `at` (a folder expected offered, or withheld).
+    /// The Browse row at `at` (a folder expected offered, or withheld).
     FolderRow,
 }
 
-/// Checks the case's expectation against the Files list and the last scan's coverage, and says what is left: a folder
-/// (`folder`, `at` is one in the last state) expected offered with no kind or folder beside it, which the Files list
-/// does not hold, is checked in the Folders view.
+/// Checks the case's expectation against the Files list (`lists.0`), the Folders list (`lists.1`) and the last scan's
+/// coverage, and says what is left: a folder (`folder`, `at` is one in the last state) expected offered with no kind or
+/// folder beside it, which the Files list does not hold, and a withheld one are checked in the Browse view.
 fn check_case(
     case: &Case,
     expect: &LargestExpectation,
     at: &Path,
     folder: bool,
-    listed: &Listed,
+    (listed, folders): (&Listed, &Folders),
     not_entered: &[NotEntered],
     sandbox: &Path,
 ) -> Result<Next, Failure> {
@@ -143,6 +190,19 @@ fn check_case(
         },
         Shown::Absent => absent().map(|()| Next::Done),
         Shown::Withheld => Ok(Next::FolderRow),
+        Shown::Listed => match (folders.at(at), expect.project()) {
+            (None, _) => Err(failure(case.name(), format!("on Largest → Folders, {shown} is not listed"))),
+            (Some(row), Some(project)) if row.project != project => {
+                let problem =
+                    format!("on Largest → Folders, {shown} is listed with project = {}, not {project}", row.project);
+                Err(failure(case.name(), problem))
+            }
+            (Some(_), _) => Ok(Next::Done),
+        },
+        Shown::Unlisted => match folders.at(at) {
+            Some(_) => Err(failure(case.name(), format!("on Largest → Folders, {shown} is listed"))),
+            None => Ok(Next::Done),
+        },
         Shown::NotSeen => {
             absent()?;
             let folder = guarded_folder(&sandbox.join("home"), at)
@@ -173,20 +233,20 @@ fn check_file_row(case: &str, expect: &LargestExpectation, row: &LargestRow) -> 
     Ok(())
 }
 
-/// The Folders row at `at`: offered for `offered`, withheld for the expected reason for `withheld`.
+/// The Browse row at `at`: offered for `offered`, withheld for the expected reason for `withheld`.
 fn check_folder_row(case: &str, expect: &LargestExpectation, row: &OwnRow) -> Result<(), Failure> {
     let expected = match expect.withheld() {
         Some(reason) => Offer::Withheld(reason),
         None => Offer::Offered,
     };
     if row.offer != expected {
-        let problem = format!("on Largest → Folders, {} is {:?}, not {expected:?}", expect.at().display(), row.offer);
+        let problem = format!("on Largest → Browse, {} is {:?}, not {expected:?}", expect.at().display(), row.offer);
         return Err(failure(case, problem));
     }
     Ok(())
 }
 
-/// The row at `at` in the Folders view of its folder (the home's first page when its folder is the home), every page.
+/// The row at `at` in the Browse view of its folder (the home's first page when its folder is the home), every page.
 fn folder_row(case: &Case, engine: &Engine, state: &dyn DiskState, at: &Path, home: &Path) -> Result<OwnRow, Failure> {
     let node = |path: &Path| {
         state.find(path).ok_or_else(|| failure(case.name(), format!("the scan has no node at {}", path.display())))
@@ -198,13 +258,13 @@ fn folder_row(case: &Case, engine: &Engine, state: &dyn DiskState, at: &Path, ho
     loop {
         let place = engine
             .largest_place(folder, offset, PAGE)
-            .map_err(|error| failure(case.name(), format!("Largest → Folders: {error:?}")))?;
+            .map_err(|error| failure(case.name(), format!("Largest → Browse: {error:?}")))?;
         if let Some(row) = place.rows.iter().find(|row| row.node.id == target) {
             return Ok(row.clone());
         }
         offset += u32::try_from(place.rows.len()).unwrap_or(u32::MAX);
         if place.rows.is_empty() || offset >= place.total {
-            let problem = format!("Largest → Folders shows no row at {}", at.display());
+            let problem = format!("Largest → Browse shows no row at {}", at.display());
             return Err(failure(case.name(), problem));
         }
     }

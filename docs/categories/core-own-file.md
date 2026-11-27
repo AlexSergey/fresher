@@ -26,7 +26,8 @@ whether you still need what is in it." (`core.own-file.reason.folder`).
 
 ## Where it lives
 
-Anywhere below the home folder that the Largest screen offers: never the home itself, `~/Library`, the Trash, a hidden
+Anywhere below the home folder that the Largest screen offers, as a file, a package or a folded subtree from Files:
+never a plain folder, and never anything from Browse or Folders, which are for looking (plan 044). Never the home itself, `~/Library`, the Trash, a hidden
 name or anything inside one, an app, a package's inside, a link, a place not scanned, a standard folder, a protected
 place, a folder holding what a module claims, a place read in part, or a path of the ignore list.
 

@@ -25,6 +25,8 @@
     "allow-get-largest",
     "allow-get-largest-place",
     "allow-pick-own-item",
+    "allow-get-largest-folders",
+    "allow-reveal-node",
     "allow-get-apps",
     "allow-get-app",
     "allow-reveal-app",

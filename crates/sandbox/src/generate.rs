@@ -5,7 +5,7 @@ use std::os::unix::fs::MetadataExt as _;
 use std::path::{Component, Path, PathBuf};
 use std::time::SystemTime;
 
-use fresher_core::{Protection, SANDBOX_MARKER, SANDBOX_SIGNATURE, SettingsStore as _, StoredSettings};
+use fresher_core::{Protection, SANDBOX_MARKER, SANDBOX_SIGNATURE, SettingsStore as _, StoredSettings, expand_home};
 use fresher_store::{DataFolder, FileSettingsStore};
 use fresher_testing::{FixtureError, TreeDescription};
 
@@ -132,15 +132,22 @@ fn write_settings(sandbox: &Sandbox, settings: BTreeMap<String, toml::Value>) ->
     if settings.is_empty() {
         return Ok(());
     }
-    let values = settings.into_iter().filter_map(|(key, value)| Some((key, stored(&value)?))).collect();
+    let home = sandbox.home();
+    let values = settings.into_iter().filter_map(|(key, value)| Some((key, stored(&value, &home)?))).collect();
     let refused = |reason: String| SandboxError::Settings { reason };
     let folder = DataFolder::open(sandbox.data_folder()).map_err(|error| refused(error.to_string()))?;
     FileSettingsStore::new(folder).save(&StoredSettings { values }).map_err(|error| refused(error.to_string()))
 }
 
-/// A setting's value as the settings file keeps it: a plain JSON value; `None` for a kind no case file may write.
-fn stored(value: &toml::Value) -> Option<serde_json::Value> {
+/// A setting's value as the settings file keeps it: a plain JSON value, a list of paths with its `~` filled in with the
+/// sandbox's `home`; `None` for a kind no case file may write.
+fn stored(value: &toml::Value, home: &Path) -> Option<serde_json::Value> {
     match value {
+        toml::Value::Array(paths) => {
+            let paths: Option<Vec<_>> = paths.iter().map(toml::Value::as_str).collect();
+            let expanded = paths?.into_iter().map(|path| expand_home(Path::new(path), home));
+            Some(expanded.map(|path| path.to_string_lossy().into_owned()).collect())
+        }
         toml::Value::Boolean(on) => Some((*on).into()),
         toml::Value::Integer(number) => Some((*number).into()),
         toml::Value::String(text) => Some(text.as_str().into()),
@@ -608,6 +615,22 @@ name = "Mine"
             let data = DataFolder::open(fs::canonicalize(&into).unwrap().join(".fresher-data")).unwrap();
             let stored = FileSettingsStore::new(data).load().unwrap();
             let expected = json!({ "demo.count": 3, "demo.deep": true, "demo.mode": "few" });
+            assert_eq!(serde_json::to_value(stored).unwrap(), expected);
+        }
+
+        #[test]
+        fn the_ignored_paths_are_written_from_the_sandbox_s_home() {
+            let folder = tempfile::tempdir().unwrap();
+            let into = folder.path().join("sandbox");
+            let text = format!("{TRIAL}[settings]\n\"core.ignore.paths\" = [\"~/Old-tools\", \"/elsewhere\"]\n");
+            let file = crate::CaseFile::parse(&text).unwrap();
+
+            run(&[file], &into).unwrap();
+
+            let home = fs::canonicalize(&into).unwrap().join("home");
+            let data = DataFolder::open(fs::canonicalize(&into).unwrap().join(".fresher-data")).unwrap();
+            let stored = FileSettingsStore::new(data).load().unwrap();
+            let expected = json!({ "core.ignore.paths": [home.join("Old-tools"), "/elsewhere"] });
             assert_eq!(serde_json::to_value(stored).unwrap(), expected);
         }
 

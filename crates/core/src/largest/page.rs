@@ -1,4 +1,4 @@
-//! What the Largest screen asks and what it is answered: a query, a page of rows, and the folder view's rows.
+//! What the Largest screen asks and what it is answered: a query, a page of rows, and Browse's rows.
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -195,7 +195,8 @@ pub struct LargestPage {
     pub min_size: ByteSize,
 }
 
-/// One row of the folder view.
+/// One row of Browse, read-only: nothing on it is picked. `offer` says why the row is not on Files (or why it does not
+/// open), `opens` whether it opens to its children.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct OwnRow {
@@ -206,10 +207,9 @@ pub struct OwnRow {
     pub offer: Offer,
     /// Whether the row opens to its children.
     pub opens: bool,
-    pub picked: Option<FindingId>,
 }
 
-/// One page of the folder view.
+/// One page of Browse.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct OwnPlace {

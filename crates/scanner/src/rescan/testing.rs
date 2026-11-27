@@ -10,7 +10,7 @@ use fresher_core::{
 };
 use fresher_testing::{FakeChangeJournal, FakeClock, FixtureTree, MemoryScanCache};
 
-use crate::codec::testing::snapshot;
+use crate::codec::testing::{Snapshot, snapshot};
 use crate::rescan::Scope;
 use crate::rescan::load::Cached;
 use crate::scanner::{AnchorResolver, Scanner, ScannerOptions, home_anchor};
@@ -273,10 +273,15 @@ impl Rig {
 }
 
 /// Asserts that a rescan gave what a full scan of the same disk gives: the same tree node for node (times, groups
-/// and roots included), the same matches and the same counts.
+/// and roots included), the same matches and the same counts. A folder's newest change is never older than the full
+/// scan's; it may be newer, when what made an ancestor of a folder read again newest went (see `patch`).
 pub(crate) fn assert_same(rescan: &Walked, full: &Walked) {
     let (patched, scanned) = (rescan.tree.as_ref().unwrap(), full.tree.as_ref().unwrap());
-    let (left, right) = (snapshot(patched), snapshot(scanned));
+    let (mut left, mut right) = (snapshot(patched), snapshot(scanned));
+    assert_never_older(&left, &right);
+    for shape in left.shapes.iter_mut().chain(&mut right.shapes) {
+        shape.newest = None;
+    }
     let differences: Vec<_> =
         left.shapes.iter().zip(&right.shapes).filter(|(left, right)| left != right).take(3).collect();
     assert!(differences.is_empty(), "{differences:#?}");
@@ -291,4 +296,17 @@ pub(crate) fn assert_same(rescan: &Walked, full: &Walked) {
         (left.entries, &left.unreadable, &left.not_scanned),
         (right.entries, &right.unreadable, &right.not_scanned)
     );
+}
+
+/// Asserts that no node of the patched tree is older than the same node of the full scan.
+fn assert_never_older(patched: &Snapshot, scanned: &Snapshot) {
+    let older: Vec<_> = patched
+        .shapes
+        .iter()
+        .zip(&scanned.shapes)
+        .filter(|(patched, scanned)| patched.path == scanned.path && patched.newest < scanned.newest)
+        .map(|(patched, scanned)| (&patched.path, patched.newest, scanned.newest))
+        .take(3)
+        .collect();
+    assert!(older.is_empty(), "older than the truth: {older:?}");
 }

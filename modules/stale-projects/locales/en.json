@@ -26,7 +26,7 @@
   "stale-projects.enabled.label": "Old projects",
   "stale-projects.enabled.description": "Finds the installed packages and build output of projects you have not changed for a long time, and Rust's build cache. Your code is never touched.",
   "stale-projects.unused-for-days.label": "Offer projects unchanged for",
-  "stale-projects.unused-for-days.description": "A project's packages and build output are offered only once nothing in it has changed for this many days, at least 30. Rust's build cache is offered after 7 days without a build, whatever this says.",
+  "stale-projects.unused-for-days.description": "Packages and build output are offered once nothing in a project has changed for this many days (30 at least); the same days pick Largest's folders. Rust's build cache goes after 7 days.",
   "stale-projects.title": "{project} · {folder}",
   "stale-projects.reason.dependencies": "Nothing in this project has changed since {date}. Running {command} in it downloads these packages again.",
   "stale-projects.reason.build-output": "Nothing in this project has changed since {date}. Running {command} in it builds this again, which takes a while.",

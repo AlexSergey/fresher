@@ -49,6 +49,16 @@
     background-color: var(--part-your-folders);
   }
 
+  .segment[data-tone='files-and-apps'],
+  .dot[data-tone='files-and-apps'] {
+    background-color: var(--part-files-and-apps);
+  }
+
+  .segment[data-tone='system-space'],
+  .dot[data-tone='system-space'] {
+    background-color: var(--part-system-space);
+  }
+
   .segment[data-tone='mac-os'],
   .dot[data-tone='mac-os'] {
     background-color: var(--part-mac-os);
@@ -88,6 +98,10 @@
     gap: var(--space-2) var(--space-4);
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     list-style: none;
+  }
+
+  .legend[data-columns='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .item {

@@ -274,7 +274,8 @@ impl World {
         let tree_size = sandbox_entries(&tree).iter().map(|entry| entry.logical_size).sum();
         let world = fresher_sandbox::World::read(&generated.sandbox).map_err(|error| failure(name, error))?;
         let commands = Arc::new(world.commands(generated.sandbox.path()));
-        let ports = fakes(tree_size, &world, &generated.sandbox, Arc::clone(&commands))
+        let filled = files.iter().filter_map(|file| file.tree().ok()).map(|tree| tree.filled_bytes()).sum();
+        let ports = fakes((tree_size, filled), &world, &generated.sandbox, Arc::clone(&commands))
             .ok_or_else(|| failure(name, "the sandbox's world.toml holds no `now`"))?;
         let engine = sandbox_engine(&mode, &self.real_home(), &self.real_data(), ports)
             .map_err(|error| failure(name, format!("sandbox mode does not start: {error}")))?;
@@ -318,16 +319,16 @@ fn leak(id: &str) -> &'static str {
 /// Fakes for every port sandbox mode keeps real: no clock, volume, open file, tool or permission of the machine, and
 /// the running apps, the moment, the access, the installs and the stated facts of the sandbox's `world` (at `sandbox`),
 /// as sandbox mode takes them: the clock stands at the moment the sandbox was generated. The volume holds `tree_size`
-/// bytes of the sandbox's files; the programs are the world's `commands`. `None` when the world holds no moment.
+/// bytes of the sandbox's files (`filled` of them real data, which the volume's capacity grows to hold); the programs are the world's `commands`. `None` when the world holds no moment.
 fn fakes(
-    tree_size: u64,
+    (tree_size, filled): (u64, u64),
     world: &fresher_sandbox::World,
     sandbox: &Sandbox,
     commands: Arc<WorldCommands>,
 ) -> Option<SandboxPorts> {
     let facts = VolumeFacts { id: VolumeId::new(1), device: 1, case_sensitive: false, used: ByteSize::new(1) };
     let now = world.now()?.duration_since(SystemTime::UNIX_EPOCH).ok()?;
-    let volumes = FakeVolumes::default().with("/", facts).with_space("/", sandbox_disk(tree_size));
+    let volumes = FakeVolumes::default().with("/", facts).with_space("/", sandbox_disk(tree_size, filled));
     // A demo world's volume is the one the app answers, as in sandbox mode.
     let volumes: Arc<dyn Volumes> = match world.volume() {
         Some(volume) => Arc::new(StatedSpace::new(Arc::new(volumes), volume)),
@@ -346,6 +347,7 @@ fn fakes(
         ),
         installs: Arc::new(world.install_records()),
         stated: world.stated(sandbox.path()),
+        aged: world.aged(sandbox.path()),
     })
 }
 

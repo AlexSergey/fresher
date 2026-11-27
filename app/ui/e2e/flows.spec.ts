@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import type { FolderRow } from '../src/ipc/bindings.generated';
+
 import { COMMANDS } from '../src/ipc';
 import { APP_CACHES_DICTIONARY } from '../src/test/app-caches-scan';
 import { APP_LEFTOVERS_DICTIONARY } from '../src/test/app-leftovers-scan';
@@ -8,14 +10,14 @@ import { DEV_CACHES_DICTIONARY } from '../src/test/dev-caches-scan';
 import { DOCKER_DICTIONARY } from '../src/test/docker-scan';
 import { DOWNLOADS_DICTIONARY } from '../src/test/downloads-scan';
 import { JETBRAINS_DICTIONARY } from '../src/test/jetbrains-scan';
-import { LARGEST_DICTIONARY } from '../src/test/largest-scan';
+import { FOLDERS, LARGEST_DICTIONARY } from '../src/test/largest-scan';
 import { LOCAL_AI_MODELS_DICTIONARY } from '../src/test/local-ai-models-scan';
 import { LOGS_DICTIONARY } from '../src/test/logs-scan';
 import { STALE_PROJECTS_DICTIONARY } from '../src/test/stale-projects-scan';
 import { TEMP_DICTIONARY } from '../src/test/temp-scan';
 import { UNUSED_TOOLCHAINS_DICTIONARY } from '../src/test/unused-toolchains-scan';
 import { XCODE_DICTIONARY } from '../src/test/xcode-scan';
-import { firstRelease, mockCore, releaseScan, SCRIPTS, withheld } from './core-mock';
+import { type CoreScript, firstRelease, mockCore, releaseScan, SCRIPTS, withheld } from './core-mock';
 import { acceptedVersions } from './support/agreement-mock';
 import {
   cardNames,
@@ -37,11 +39,14 @@ import {
 } from './support/cleanup-mock';
 import { highTick, tickHigh } from './support/confirm';
 import { expectNoCspViolation, failOnCspViolation } from './support/csp';
+import { revealed } from './support/largest-mock';
 import { closedGroups, settingsPage } from './support/settings';
 
 // The user's paths through the screens on the mocked core, by pointer and by keyboard alone.
 
 const BUSY_TEXT = 'The app is already running a scan. Wait for it to finish, or cancel it.';
+
+const STALE_NODE_TEXT = 'This view is out of date because the scan changed. Open it again.';
 
 // Presses Tab until `target` has the focus: the keyboard's way to a control, whatever comes before it.
 const tabTo = async (page: Page, target: Locator): Promise<void> => {
@@ -145,7 +150,7 @@ const JB = {
 const jb = (key: string): string => JETBRAINS_DICTIONARY[`jetbrains.${key}`] ?? '';
 
 // Scans `script` and waits on the overview for its end.
-const scanned = async (page: Page, script: (typeof SCRIPTS)[keyof typeof SCRIPTS]): Promise<void> => {
+const scanned = async (page: Page, script: CoreScript): Promise<void> => {
   await mockCore(page, script);
   await page.goto('/');
   await scanButton(page).click();
@@ -391,7 +396,9 @@ const LARGEST = {
 
 const largestFiles = (page: Page): Locator => page.getByRole('list', { name: 'Largest files, largest first' });
 
-const largestFolders = (page: Page): Locator => page.getByRole('list', { name: 'Folders, largest first' });
+const largestFolders = (page: Page): Locator => page.getByRole('list', { name: 'Folders left alone, largest first' });
+
+const largestBrowse = (page: Page): Locator => page.getByRole('list', { name: 'Folders and files, largest first' });
 
 const largestRow = (list: Locator, name: string): Locator => list.getByRole('listitem').filter({ hasText: name });
 
@@ -415,6 +422,11 @@ const openLargest = async (page: Page): Promise<void> => {
 const showFolders = async (page: Page): Promise<void> => {
   await page.getByRole('tab', { name: 'Folders' }).click();
   await expect(largestFolders(page)).toBeVisible();
+};
+
+const showBrowse = async (page: Page): Promise<void> => {
+  await page.getByRole('tab', { name: 'Browse' }).click();
+  await expect(largestBrowse(page)).toBeVisible();
 };
 
 // Picks the disk image on Largest and opens the review.
@@ -1018,17 +1030,17 @@ test.describe('negative cases', () => {
 
   test('a standard folder opens but cannot be chosen', async ({ page }) => {
     await openLargest(page);
-    await showFolders(page);
+    await showBrowse(page);
 
-    const movies = largestRow(largestFolders(page), 'Movies');
+    const movies = largestRow(largestBrowse(page), 'Movies');
     await expect(movies.getByRole('checkbox')).toHaveCount(0);
     await expect(movies).toContainText(lgt('withheld.standard-folder'));
     await movies.getByRole('button', { name: 'Open' }).click();
-    await expect(largestRow(largestFolders(page), LARGEST.movie)).toBeVisible();
-    await expect(largestRow(largestFolders(page), LARGEST.movie).getByRole('checkbox')).toHaveCount(1);
+    await expect(largestRow(largestBrowse(page), LARGEST.movie)).toBeVisible();
+    await expect(largestRow(largestBrowse(page), LARGEST.movie).getByRole('checkbox')).toHaveCount(0);
 
     await page.getByRole('navigation', { name: 'Where you are' }).getByRole('button', { name: 'Home' }).click();
-    const library = largestRow(largestFolders(page), 'Library');
+    const library = largestRow(largestBrowse(page), 'Library');
     await expect(library.getByRole('checkbox')).toHaveCount(0);
     await expect(library.getByRole('button', { name: 'Open' })).toHaveCount(0);
     await expect(library).toContainText(lgt('withheld.library'));
@@ -3255,22 +3267,84 @@ test.describe('positive cases', () => {
     );
   });
 
-  test('the folders view opens a folder and goes back by its way', async ({ page }) => {
+  test('Browse opens a folder and goes back by its way', async ({ page }) => {
     await openLargest(page);
-    await showFolders(page);
+    await showBrowse(page);
 
-    await expect(largestFolders(page).getByRole('listitem')).toHaveCount(6);
-    await largestRow(largestFolders(page), 'Parallels').getByRole('button', { name: 'Open' }).click();
+    await expect(largestBrowse(page).getByRole('listitem')).toHaveCount(6);
+    await largestRow(largestBrowse(page), 'Parallels').getByRole('button', { name: 'Open' }).click();
     await expect(heading(page, 'Largest files and folders')).toBeFocused();
-    await expect(largestFolders(page).getByRole('listitem')).toHaveCount(1);
-    await expect(largestFolders(page)).toContainText(LARGEST.vm);
+    await expect(largestBrowse(page).getByRole('listitem')).toHaveCount(1);
+    await expect(largestBrowse(page)).toContainText(LARGEST.vm);
     await expect(page.getByRole('navigation', { name: 'Where you are' }).getByText('Parallels')).toHaveAttribute(
       'aria-current',
       'page',
     );
 
     await page.getByRole('navigation', { name: 'Where you are' }).getByRole('button', { name: 'Home' }).click();
-    await expect(largestFolders(page).getByRole('listitem')).toHaveCount(6);
+    await expect(largestBrowse(page).getByRole('listitem')).toHaveCount(6);
+  });
+
+  test('Browse has no checkbox on any row', async ({ page }) => {
+    await openLargest(page);
+    await showBrowse(page);
+
+    await expect(largestBrowse(page).getByRole('checkbox')).toHaveCount(0);
+    await largestRow(largestBrowse(page), 'Parallels').getByRole('button', { name: 'Open' }).click();
+    await expect(largestRow(largestBrowse(page), LARGEST.vm)).toBeVisible();
+    await expect(largestBrowse(page).getByRole('checkbox')).toHaveCount(0);
+    await expect(selectionBar(page)).toHaveCount(0);
+  });
+
+  test('Show in Finder on a Browse row reveals it', async ({ page }) => {
+    await openLargest(page);
+    await showBrowse(page);
+
+    await largestBrowse(page).getByRole('button', { name: 'Show in Finder: Movies' }).click();
+    await expect.poll(() => revealed(page)).toStrictEqual([15]);
+    await expect(notifications(page)).not.toContainText(STALE_NODE_TEXT);
+  });
+
+  test('Folders lists the folders left alone, largest first, with no checkbox', async ({ page }) => {
+    await openLargest(page);
+    await showFolders(page);
+
+    const rows = largestFolders(page).getByRole('listitem');
+    await expect(rows).toHaveCount(FOLDERS.rows.length);
+    await expect(rows.first()).toContainText('Archive');
+    await expect(rows.last()).toContainText('old-export');
+    await expect(largestRow(largestFolders(page), 'old-app')).toContainText('Project');
+    await expect(largestRow(largestFolders(page), 'old-app')).toContainText(
+      'Not changed for 14 months. Open it in the Finder to decide.',
+    );
+    await expect(largestFolders(page).getByRole('checkbox')).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 1, name: 'Largest files and folders' })).toBeVisible();
+    await expect(page.getByText('5 folders, 47 GB')).toBeVisible();
+  });
+
+  test('Show in Finder reveals the folder by its id', async ({ page }) => {
+    await openLargest(page);
+    await showFolders(page);
+
+    await largestFolders(page).getByRole('button', { name: 'Show in Finder: old-app' }).click();
+    await largestFolders(page).getByRole('button', { name: 'Show in Finder: Archive' }).click();
+
+    await expect.poll(() => revealed(page)).toStrictEqual([202, 201]);
+    await expect(notifications(page)).not.toContainText(STALE_NODE_TEXT);
+  });
+
+  test('a refused reveal shows the core’s text', async ({ page }) => {
+    // The first folder is of an older scan: the core refuses to reveal it.
+    const archive = FOLDERS.rows[0] as FolderRow;
+    const rows = FOLDERS.rows.with(0, { ...archive, node: { ...archive.node, id: { index: 201, state: 2 } } });
+    await scanned(page, { ...SCRIPTS.largest, folders: { ...FOLDERS, rows } });
+    await page.getByRole('navigation').getByRole('button', { name: 'Largest' }).click();
+    await showFolders(page);
+
+    await largestFolders(page).getByRole('button', { name: 'Show in Finder: Archive' }).click();
+
+    await expect(notifications(page)).toContainText(STALE_NODE_TEXT);
+    await expect.poll(() => revealed(page)).toStrictEqual([]);
   });
 
   test('a ticked file is reviewed under Your own files at High', async ({ page }) => {

@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use fresher_core::{Completeness, FolderIdentity};
+use fresher_core::{Completeness, FolderIdentity, Timestamp};
 
 use crate::tree::arena::Tree;
 use crate::tree::node::{Hit, NodeFlags, NodeIndex, Sums};
@@ -17,6 +17,8 @@ pub(crate) struct Shape {
     pub(crate) folders: u32,
     pub(crate) completeness: Completeness,
     pub(crate) hits: Vec<Hit>,
+    /// The newest change inside: its own listing's before `freeze`, its subtree's after.
+    pub(crate) newest: Option<Timestamp>,
 }
 
 /// Every node depth-first, children in list order.
@@ -32,6 +34,7 @@ pub(crate) fn canonical(tree: &Tree) -> Vec<Shape> {
             folders: node.folders,
             completeness: tree.completeness(index).unwrap(),
             hits: tree.hits(index).to_vec(),
+            newest: node.newest(),
         });
         let children: Vec<_> = tree.children(index).collect();
         stack.extend(children.into_iter().rev());

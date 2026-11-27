@@ -37,6 +37,21 @@ pub trait DiskState: Send + Sync {
     /// a folder smaller than `min` (nothing in it can reach it). `limit` is capped at one more than `MAX_ITEMS`, so a
     /// caller asking for that one more can tell that more were left. `None` for a node of another state.
     fn items(&self, root: NodeId, rule: &dyn ItemRule, min: ByteSize, limit: u32) -> Option<Vec<NodeId>>;
+    /// The folders below `root` (never `root` itself) left alone before `before`: of at least `min` allocated bytes,
+    /// read in full, whose newest change is known and older than `before`. Only a folder `rule` enters is looked at
+    /// (its `Item` and `Skip` are never answered nor entered); a folder looked at that is not left alone is entered.
+    /// The highest of each branch: never one inside another answered. Never a node a category claimed, a link, a
+    /// special entry or a hard link counted elsewhere; never enters a folder smaller than `min`. The largest allocated
+    /// size first, ties in path order. `None` for a node of another state.
+    fn left_alone(&self, root: NodeId, rule: &dyn ItemRule, min: ByteSize, before: Timestamp)
+    -> Option<Vec<LeftAlone>>;
+}
+
+/// One folder found left alone: no file or link below it changed since `newest`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LeftAlone {
+    pub folder: NodeId,
+    pub newest: Timestamp,
 }
 
 /// How [`DiskState::items`] treats one node below its root.

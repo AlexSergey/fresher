@@ -23,6 +23,7 @@ export {
   FolderSearch,
   Globe,
   Hammer,
+  HardDrive,
   History,
   Info,
   KeyRound,

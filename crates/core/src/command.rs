@@ -560,9 +560,9 @@ mod tests {
 
             let schema = SettingsSchema::new([&descriptor]).unwrap();
             let view = SettingsView::new(&schema, &schema.resolve(&StoredSettings::default()), SettingsFile::Loaded);
-            // Motion, the scan roots, the smallest size on Largest, the four access opt-ins, the four ignore lists, and the module's two.
-            assert_eq!(view.settings.len(), 13);
-            assert_eq!(view.values.len(), 13);
+            // Motion, the scan roots, the two smallest sizes on Largest, the four access opt-ins, the four ignore lists, and the module's two.
+            assert_eq!(view.settings.len(), 14);
+            assert_eq!(view.values.len(), 14);
             assert_eq!(view.problems, []);
         }
 

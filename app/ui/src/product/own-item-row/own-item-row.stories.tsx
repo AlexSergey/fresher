@@ -18,14 +18,13 @@ const [IMAGE, PACKAGE, PART, , ARCHIVE] = LARGEST_ROWS as readonly [
   LargestRow,
 ];
 
-// A folder of the folder view: it holds 3.1 GB that Scan explains, so it opens and is not offered to be picked whole.
+// A folder of Browse: it holds 3.1 GB that Scan explains, so it opens; a plain folder is never offered as a pick.
 const FOLDER: OwnRow = {
   explained: { allocated: 3_100_000_000, completeness: 'complete', logical: 3_100_000_000, reclaimable: 3_100_000_000 },
   kind: 'folder',
   node: { ...IMAGE.node, kind: 'folder', modified: 1_735_689_600, name: 'Developer' },
   offer: { kind: 'withheld', reason: 'holds-explained' },
   opens: true,
-  picked: null,
 };
 
 // One row in a list's frame, as the Largest screen shows it.
@@ -38,14 +37,19 @@ const row = (
 
     return (
       <div className={`${styles.frame ?? ''} ${ownItemRowsClass}`} role="list">
-        <OwnItemRow checked={false} onToggle={nothing} row={item} {...props} />
+        <OwnItemRow
+          checked={false}
+          {...('place' in item ? { onToggle: nothing } : { onReveal: nothing })}
+          row={item}
+          {...props}
+        />
       </div>
     );
   },
   width: 640,
 });
 
-// A file offered, a package, an archive with its hint, a row withheld, a folder that opens, a row checked.
+// A file offered, a package, an archive with its hint, a row withheld, a row checked, and Browse's folder that opens.
 export const stories = storiesOf('OwnItemRow', {
   archive: row(ARCHIVE),
   checked: row(IMAGE, { checked: true }),

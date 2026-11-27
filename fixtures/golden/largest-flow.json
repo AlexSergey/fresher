@@ -265,8 +265,7 @@
           "kind": "withheld",
           "reason": "standard-folder"
         },
-        "opens": true,
-        "picked": null
+        "opens": true
       },
       {
         "explained": {
@@ -294,8 +293,7 @@
           "kind": "withheld",
           "reason": "standard-folder"
         },
-        "opens": true,
-        "picked": null
+        "opens": true
       },
       {
         "explained": {
@@ -323,8 +321,7 @@
           "kind": "withheld",
           "reason": "holds-explained"
         },
-        "opens": true,
-        "picked": null
+        "opens": true
       },
       {
         "explained": {
@@ -352,8 +349,7 @@
           "kind": "withheld",
           "reason": "trash"
         },
-        "opens": false,
-        "picked": null
+        "opens": false
       },
       {
         "explained": {
@@ -381,8 +377,7 @@
           "kind": "withheld",
           "reason": "hidden"
         },
-        "opens": false,
-        "picked": null
+        "opens": false
       },
       {
         "explained": {
@@ -410,8 +405,7 @@
           "kind": "withheld",
           "reason": "standard-folder"
         },
-        "opens": true,
-        "picked": null
+        "opens": true
       },
       {
         "explained": {
@@ -439,8 +433,7 @@
           "kind": "withheld",
           "reason": "library"
         },
-        "opens": false,
-        "picked": null
+        "opens": false
       },
       {
         "explained": {
@@ -467,8 +460,7 @@
         "offer": {
           "kind": "offered"
         },
-        "opens": true,
-        "picked": null
+        "opens": true
       },
       {
         "explained": {
@@ -495,8 +487,7 @@
         "offer": {
           "kind": "offered"
         },
-        "opens": true,
-        "picked": null
+        "opens": true
       }
     ],
     "total": 9

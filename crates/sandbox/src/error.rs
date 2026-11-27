@@ -20,8 +20,12 @@ pub enum CaseError {
     /// A negative case follows a positive one.
     #[error("case \"{case}\": a negative case comes after a positive one; negatives go first")]
     PositiveBeforeNegative { case: String },
-    /// A positive case has no `[case.expect]` and no `[case.uninstall]` with a `choice`.
-    #[error("case \"{case}\": a positive case needs `[case.expect]` or a `[case.uninstall]` with a `choice`")]
+    /// A positive case has no `[case.expect]`, no `[case.uninstall]` with a `choice` and no `[case.largest]` that lists a
+    /// folder.
+    #[error(
+        "case \"{case}\": a positive case needs `[case.expect]`, a `[case.uninstall]` with a `choice` or a \
+         `[case.largest]` with `shown = \"listed\"`"
+    )]
     PositiveWithoutExpect { case: String },
     /// A negative case has a `[case.expect]`.
     #[error("case \"{case}\": a negative case expects nothing; remove its `[case.expect]`")]
@@ -136,8 +140,11 @@ pub enum CaseError {
     /// A `[settings]` key that is not `<module>.<name>` in kebab case.
     #[error("the setting `{key}` is not a key `<module>.<name>` in kebab case")]
     SettingKey { key: String },
-    /// `[case.largest]`'s `shown` is none of the four.
-    #[error("case \"{case}\": `[case.largest]` shows {shown:?}; `shown` is offered, absent, withheld or not-seen")]
+    /// `[case.largest]`'s `shown` is none of the six.
+    #[error(
+        "case \"{case}\": `[case.largest]` shows {shown:?}; `shown` is offered, absent, withheld, not-seen, listed \
+         or unlisted"
+    )]
     LargestShown { case: String, shown: String },
     /// `[case.largest]` has a `withheld` without `shown = "withheld"`, or `shown = "withheld"` without one.
     #[error("case \"{case}\": `[case.largest]` gives `withheld` with `shown = \"withheld\"`, and only with it")]
@@ -148,6 +155,12 @@ pub enum CaseError {
     /// `[case.largest]` has a `kind` or an `unpacked` without `shown = "offered"`.
     #[error("case \"{case}\": `[case.largest]` gives `{field}` with `shown = \"offered\"` only")]
     LargestOfferedOnly { case: String, field: &'static str },
+    /// `[case.largest]` has a `project` without `shown = "listed"`.
+    #[error("case \"{case}\": `[case.largest]` gives `project` with `shown = \"listed\"` only")]
+    LargestProject { case: String },
+    /// `[case.largest]` with `shown = "listed"` or `"unlisted"` has an `at` that is a file of the case.
+    #[error("case \"{case}\": `[case.largest]` lists or unlists a folder, but the `at` {at} is a file of the case")]
+    LargestAtIsAFile { case: String, at: PathBuf },
     /// `[case.largest]`'s `kind` is no kind of a row.
     #[error("case \"{case}\": `{kind}` in `[case.largest]` is not a kind of a row")]
     LargestKind { case: String, kind: String },
@@ -195,9 +208,17 @@ pub enum CaseError {
     /// A `core.own-file` expectation in a case without `[case.largest]`: nothing would pick the file.
     #[error("case \"{case}\": `core.own-file` is picked on the Largest screen; add a `[case.largest]`")]
     OwnFileWithoutLargest { case: String },
-    /// A `[settings]` value that is not a bool, an integer or a string.
-    #[error("the setting `{key}` must be a bool, an integer or a string")]
+    /// A `[settings]` value that is not a bool, an integer or a string (a list of strings for `core.ignore.paths`).
+    #[error("the setting `{key}` must be a bool, an integer or a string (a list of strings for `core.ignore.paths`)")]
     SettingValue { key: String },
+    /// A `[[case.file]]` or `[[case.dir]]` states `changed` without an `age`: its change is its age's, unless stated
+    /// later than it.
+    #[error("case \"{case}\": `{path}` states `changed` without an `age`")]
+    ChangedWithoutAge { case: String, path: PathBuf },
+    /// A `[[case.file]]` or `[[case.dir]]` states `changed` older than its `age`: a change is never before the
+    /// modification.
+    #[error("case \"{case}\": `{path}` states `changed` older than its `age`")]
+    ChangedOlderThanAge { case: String, path: PathBuf },
     /// A `[settings]` key of the agreement: a sandbox starts with the agreement asked, so a cleanup in it shows the sheet
     /// as a new user's first cleanup does. Only a demo world's `agreement = "accepted"` writes the acceptance.
     #[error(

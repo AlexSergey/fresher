@@ -10,8 +10,7 @@ import { setMotion } from '../../test/animation';
 import { DEMO_OVERVIEW } from '../../test/demo-scan';
 import { LARGEST_DICTIONARY } from '../../test/largest-scan';
 import { AppProviders } from '../app-providers';
-import { FoldersView } from './folders-view';
-import { useOwnPick } from './use-own-pick';
+import { BrowseView } from './browse-view';
 
 const node = (index: number, name: string, kind: NodeInfo['kind'] = 'folder'): NodeInfo => ({
   files: 0,
@@ -35,7 +34,6 @@ const row = (info: NodeInfo, opens: boolean): OwnRow => ({
   node: info,
   offer: { kind: 'offered' },
   opens,
-  picked: null,
 });
 
 const PLACES: Readonly<Record<number, OwnPlace>> = {
@@ -43,6 +41,8 @@ const PLACES: Readonly<Record<number, OwnPlace>> = {
   2: { offset: 0, path: [HOME, MOVIES], rows: [row(TRIPS, true)], total: 1 },
   3: { offset: 0, path: [HOME, MOVIES, TRIPS], rows: [], total: 0 },
 };
+
+const STALE: Refusal = { error: { code: 'stale-node' }, text: { args: {}, key: 'core.error.stale-node' } };
 
 const asked: { folder: NodeId | null; offset: number }[] = [];
 
@@ -56,19 +56,22 @@ const answer = (args: unknown): OwnPlace => {
 // The view with the screen's folder state around it, under a heading like the screen's.
 const Host = (): JSX.Element => {
   const [folder, setFolder] = useState<NodeId | null>(null);
-  const pick = useOwnPick();
 
   return (
     <main>
       <h1>Largest</h1>
-      <FoldersView folder={folder} onFolder={setFolder} pick={pick} />
+      <BrowseView folder={folder} onFolder={setFolder} />
     </main>
   );
 };
 
-const show = async (reply: (args: unknown) => unknown = answer): Promise<CoreStore> => {
+const show = async (
+  reply: (args: unknown) => unknown = answer,
+  more: Readonly<Record<string, (args: unknown) => unknown>> = {},
+): Promise<CoreStore> => {
   mockCore({
     ...sampleAgreementAnswers,
+    ...more,
     getDictionary: () => LARGEST_DICTIONARY,
     getLargestPlace: reply,
     getOverview: () => DEMO_OVERVIEW,
@@ -96,8 +99,25 @@ afterEach(async () => {
   await setMotion(null);
 });
 
-describe('FoldersView', () => {
+describe('BrowseView', () => {
   describe('negative cases', () => {
+    it('reports a refused reveal', async () => {
+      const store = await show(answer, { revealNode: refuse(STALE) });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Show in Finder: Movies' }));
+
+      await waitFor(() => {
+        expect(store.getState().failure?.kind).toBe('refused');
+      });
+    });
+
+    it('has no checkbox', async () => {
+      await show();
+      await screen.findByText('Movies');
+
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
     it('a folder that does not open has no Open button', async () => {
       await show();
 
@@ -119,6 +139,27 @@ describe('FoldersView', () => {
   });
 
   describe('positive cases', () => {
+    it('reveals a row by its id', async () => {
+      const revealNode = vi.fn(() => null);
+      await show(answer, { revealNode });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Show in Finder: Movies' }));
+
+      await waitFor(() => {
+        expect(revealNode).toHaveBeenCalledOnce();
+      });
+      expect(revealNode.mock.calls[0]).toStrictEqual([{ node: MOVIES.id }]);
+    });
+
+    it('opens a folder', async () => {
+      await show();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
+
+      await screen.findByText('Trips');
+      expect(asked.at(-1)).toStrictEqual({ folder: MOVIES.id, offset: 0 });
+    });
+
     it('the home opens first', async () => {
       await show();
 

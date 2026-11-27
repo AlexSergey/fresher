@@ -47,8 +47,7 @@ folder, inside a package, or below 10 MB. Tick `Installer.dmg` ("Choose Installe
 selected". Review shows it under "Your own files" as "Only if you are sure". Press **Move to the Trash**: the
 confirmation asks the High tick (as HL-02), disabled until ticked. Confirm: `Installer.dmg` is in `home/.Trash`, and
 Largest no longer lists it, with a notice that a cleanup changed the disk. Cleanups: **Put back** returns it. On
-**Folders**, `Public` has no checkbox and says "A standard folder of your Mac. Open it to choose what is inside."; its
-**Open** button opens it. A folder that the core offers, such as `Old projects`, has a checkbox.
+**Folders** and **Browse** have no checkbox ([LF-01, LF-04](./largest-folders.md)).
 
 ### HL-04 Uninstall everything
 

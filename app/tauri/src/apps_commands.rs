@@ -75,22 +75,22 @@ mod tests {
             assert_eq!(refused, Err(Refusal::from(CommandError::UnknownApp { id: app })));
         }
 
-        /// The second wall: the composition's cleaner, given an ordinary plan that holds a folder in the home's apps
-        /// folder (a pick of the Largest screen, which never offers a bundle itself, in a sandbox the cleaner
+        /// The second wall: the composition's cleaner, given an ordinary plan that holds a package in the home's
+        /// apps folder (a pick of the Largest screen, which never offers a bundle itself, in a sandbox the cleaner
         /// reaches), skips it as protected and leaves it in place.
         #[test]
         fn an_ordinary_cleanup_never_moves_anything_in_an_apps_folder() {
             let home = trial_home(true);
             // The home's apps folder is a standard folder: a marker counts only in a folder inside it.
             home.mark_sandbox(Path::new("Applications/Installers")).unwrap();
-            let old = home.root().join("Applications").join("Installers").join("Old");
+            let old = home.root().join("Applications").join("Installers").join("Old.utm");
             std::fs::create_dir(&old).unwrap();
             let file = old.join("Editor.dmg");
             std::fs::write(&file, [1_u8; 4_096]).unwrap();
             let shell = Shell::cleaning(home.root());
             scan(&shell);
             let mut place = None;
-            for name in ["Applications", "Installers", "Old"] {
+            for name in ["Applications", "Installers", "Old.utm"] {
                 let rows = get_largest_place(shell.engine(), place, 0, 10).unwrap().rows;
                 place = Some(rows.iter().find(|row| row.node.name == name).unwrap().node.id);
             }
@@ -103,6 +103,27 @@ mod tests {
             assert_eq!(view.left_out.len(), 1);
             assert_eq!(view.left_out[0].reason(), &SkipReason::Protected);
             assert!(file.is_file());
+        }
+
+        /// A plain folder of the apps folder is not a pick at all.
+        #[test]
+        fn a_plain_folder_in_an_apps_folder_is_not_picked() {
+            let home = trial_home(true);
+            home.mark_sandbox(Path::new("Applications/Installers")).unwrap();
+            let old = home.root().join("Applications").join("Installers").join("Old");
+            std::fs::create_dir(&old).unwrap();
+            std::fs::write(old.join("Editor.dmg"), [1_u8; 4_096]).unwrap();
+            let shell = Shell::cleaning(home.root());
+            scan(&shell);
+            let mut place = None;
+            for name in ["Applications", "Installers", "Old"] {
+                let rows = get_largest_place(shell.engine(), place, 0, 10).unwrap().rows;
+                place = Some(rows.iter().find(|row| row.node.name == name).unwrap().node.id);
+            }
+
+            let refused = pick_own_item(shell.engine(), place.unwrap());
+
+            assert_eq!(refused.map(|_| ()), Err(Refusal::from(CommandError::NotOwnItem)));
         }
     }
 

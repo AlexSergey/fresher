@@ -1,0 +1,135 @@
+# The Largest screen's Folders list on the `trial` module: the big folders of the home that nothing inside has changed
+# in for a year, and the ones it leaves out. The list takes folders of 500 MB (`core.largest.folder-min-size`) and
+# 365 days (the stale days, left as they are), so every folder meant to be listed or tested holds one 520 MB file
+# filled with data (a sparse file takes no block): the file writes about 2.6 GB of filled data in all.
+#
+# EVERY file of a case is aged: a folder's own time does not count in the list, a file's does, and a file the
+# generator makes is "changed today". An age sets a file's modification time; the sandbox states its change time too,
+# which no tool can set on macOS (`StatedTimes`). `changed` states a later one, a folder copied or restored lately.
+# Nothing lies in `Downloads`, `Desktop` or `Documents`: other case files' worlds deny them in
+# `npm run sandbox -- all`. The standard folder is `Public`; `Old-tools` is on the ignore list.
+feature = "largest-folders"
+module = "trial"
+
+[settings]
+"core.largest.folder-min-size" = "500-mb"
+"core.ignore.paths" = ["~/Old-tools"]
+
+# Negative cases first, as in every test of the repository.
+[[case]]
+name = "a folder with a recent file is not listed"
+kind = "negative"
+[[case.file]]
+path = "home/Code/new-app/main.rs"
+size = 4096
+fill = "data"
+age = "1d"
+[case.largest]
+shown = "unlisted"
+at = "home/Code"
+
+[[case]]
+name = "an ignored folder is never listed, even holding explained items"
+kind = "negative"
+[[case.marker]]
+path = "home/Old-tools"
+[[case.file]]
+path = "home/Old-tools/Sample app cache/blob.bin"
+size = 520000000
+fill = "data"
+age = "400d"
+[case.largest]
+shown = "unlisted"
+at = "home/Old-tools"
+
+[[case]]
+name = "a folder inside a listed one is not listed"
+kind = "negative"
+[[case.file]]
+path = "home/Archive/2019/photos.bin"
+size = 520000000
+fill = "data"
+age = "400d"
+[case.largest]
+shown = "unlisted"
+at = "home/Archive/2019"
+
+[[case]]
+name = "a standard folder is never listed"
+kind = "negative"
+[[case.file]]
+path = "home/Public/readme.bin"
+size = 4096
+fill = "data"
+age = "400d"
+[case.largest]
+shown = "unlisted"
+at = "home/Public"
+
+[[case]]
+name = "a small stale folder is not listed"
+kind = "negative"
+[[case.file]]
+path = "home/Small/notes.bin"
+size = 12582912
+fill = "data"
+age = "400d"
+[case.largest]
+shown = "unlisted"
+at = "home/Small"
+
+[[case]]
+name = "a folder of old files copied today is not listed"
+kind = "negative"
+[[case.file]]
+path = "home/Restored/photos.bin"
+size = 520000000
+fill = "data"
+age = "400d"
+changed = "1d"
+[case.largest]
+shown = "unlisted"
+at = "home/Restored"
+
+[[case]]
+name = "a stale project is listed as a project"
+kind = "positive"
+[[case.file]]
+path = "home/Code/old-app/.git/HEAD"
+size = 4096
+fill = "data"
+age = "400d"
+[[case.file]]
+path = "home/Code/old-app/data.bin"
+size = 520000000
+fill = "data"
+age = "400d"
+[case.largest]
+shown = "listed"
+at = "home/Code/old-app"
+project = true
+
+[[case]]
+name = "the stale folder around a stale one is listed"
+kind = "positive"
+[[case.file]]
+path = "home/Archive/notes.bin"
+size = 4096
+fill = "data"
+age = "400d"
+[case.largest]
+shown = "listed"
+at = "home/Archive"
+project = false
+
+[[case]]
+name = "a stale folder in a standard folder is listed"
+kind = "positive"
+[[case.file]]
+path = "home/Public/old-export/export.bin"
+size = 520000000
+fill = "data"
+age = "400d"
+[case.largest]
+shown = "listed"
+at = "home/Public/old-export"

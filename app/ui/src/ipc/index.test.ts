@@ -22,6 +22,7 @@ import {
   getDictionary,
   getFindings,
   getLargest,
+  getLargestFolders,
   getLargestPlace,
   getModules,
   getOverview,
@@ -44,12 +45,14 @@ import {
   revealApp,
   revealFinding,
   revealInTrash,
+  revealNode,
   startScan,
   subscribe,
   updateSetting,
 } from '.';
 import { DEMO_PLAN, HISTORY, MOVED_DETAIL } from '../test/cleanup-plan';
 import { allFiles, BUSY, DEMO_SCAN, IDLE } from '../test/demo-scan';
+import { FOLDERS } from '../test/largest-scan';
 import { SAMPLE_STORAGE_MAP } from '../test/storage-map';
 import { mockCore, pushEvents, refuse, sampleStorageAnswers } from './mock';
 
@@ -138,6 +141,16 @@ describe('the IPC module', () => {
       mockCore({ pickOwnItem: refuse(refusal) });
 
       const error: unknown = await pickOwnItem({ index: 3, state: 1 }).catch((failure: unknown) => failure);
+
+      expect(error).toBeInstanceOf(CommandFailed);
+      expect(failureOf(error)).toEqual({ kind: 'refused', refusal });
+    });
+
+    it('getLargestFolders passes a refusal on', async () => {
+      const refusal = { error: { code: 'no-scan' }, text: { args: {}, key: 'core.error.no-scan' } } as Refusal;
+      mockCore({ getLargestFolders: refuse(refusal) });
+
+      const error: unknown = await getLargestFolders({ limit: 100, offset: 0 }).catch((failure: unknown) => failure);
 
       expect(error).toBeInstanceOf(CommandFailed);
       expect(failureOf(error)).toEqual({ kind: 'refused', refusal });
@@ -277,6 +290,27 @@ describe('the IPC module', () => {
         { folder: null, limit: 100, offset: 0 },
         { node },
       ]);
+    });
+
+    it('getLargestFolders sends the query', async () => {
+      const { answer, seen } = recorder();
+      mockCore({ getLargestFolders: answer(FOLDERS) });
+
+      await expect(getLargestFolders({ limit: 50, offset: 100 })).resolves.toEqual(FOLDERS);
+
+      expect(seen).toStrictEqual([{ query: { limit: 50, offset: 100 } }]);
+      expect(COMMANDS.getLargestFolders).toBe('get_largest_folders');
+    });
+
+    it("revealNode sends the node's id and nothing else", async () => {
+      const { answer, seen } = recorder();
+      const node = { index: 202, state: 1 };
+      mockCore({ revealNode: answer(null) });
+
+      await revealNode(node);
+
+      expect(seen).toStrictEqual([{ node }]);
+      expect(COMMANDS.revealNode).toBe('reveal_node');
     });
 
     it('passes every cleanup command its arguments by name', async () => {

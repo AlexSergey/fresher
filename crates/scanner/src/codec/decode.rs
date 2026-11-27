@@ -1,6 +1,7 @@
 //! Reading a body back into a tree: the arena is rebuilt from the depth-first order and the child counts, the groups
-//! are added again, and `freeze` sums the totals. Every count is checked against the bytes left; anything that does
-//! not hold is a [`CodecError`], never a panic and never a partial tree.
+//! are added again, and `freeze` sums the totals (the newest changes are read as their subtrees' already). Every count
+//! is checked against the bytes left; anything that does not hold is a [`CodecError`], never a panic and never a
+//! partial tree.
 
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
@@ -18,9 +19,9 @@ use crate::tree::arena::{Shared, Tree};
 use crate::tree::node::{Flag, Hit, Node, NodeFlags, NodeIndex, Sums};
 use crate::tree::times::Stamp;
 
-/// The fewest bytes a node's record takes: an empty suffix, flags, four sums, a time, no hits, no owner, the access,
-/// and the name's prefix and suffix lengths.
-const MIN_RECORD: usize = 11;
+/// The fewest bytes a node's record takes: an empty suffix, flags, four sums, two times, no hits, no owner, the
+/// access, and the name's prefix and suffix lengths.
+const MIN_RECORD: usize = 12;
 /// The fewest bytes a hit takes: interest, marker check, sibling bits, held bits.
 const MIN_HIT: usize = 4;
 /// The flags only a folder may carry.
@@ -42,7 +43,7 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<(Tree, Header), CodecError> {
     let nodes = reader.count(MIN_RECORD)?;
     let mut tree = Tree::with_capacity(nodes);
     let mut unclaimed = nodes.checked_sub(roots).ok_or(CodecError::CountTooLarge)?;
-    let mut stack = vec![Frame { parent: NodeIndex::NONE, left: roots, last: NodeIndex::NONE, modified: 0 }];
+    let mut stack = vec![Frame { parent: NodeIndex::NONE, left: roots, last: NodeIndex::NONE, modified: 0, newest: 0 }];
     let mut name = Vec::new();
     let mut hits = Vec::new();
     while let Some(frame) = stack.last_mut() {
@@ -51,8 +52,9 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<(Tree, Header), CodecError> {
             continue;
         }
         frame.left -= 1;
-        let Frame { parent, last, modified: base, .. } = *frame;
-        let record = read_record(&mut reader, &tree, &header, Place { parent, last, base }, &mut name, &mut hits)?;
+        let Frame { parent, last, modified: base, newest: base_newest, .. } = *frame;
+        let place = Place { parent, last, base, base_newest };
+        let record = read_record(&mut reader, &tree, &header, place, &mut name, &mut hits)?;
         if record.children > unclaimed {
             return Err(CodecError::CountTooLarge);
         }
@@ -67,6 +69,7 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<(Tree, Header), CodecError> {
                 left: record.children,
                 last: NodeIndex::NONE,
                 modified: record.modified,
+                newest: record.newest,
             });
         }
     }
@@ -80,21 +83,24 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<(Tree, Header), CodecError> {
     Ok((tree, header))
 }
 
-/// A folder whose children are being read: how many are left, the last one read, its modification time.
+/// A folder whose children are being read: how many are left, the last one read, its modification time and its
+/// newest change.
 #[derive(Clone, Copy, Debug)]
 struct Frame {
     parent: NodeIndex,
     left: usize,
     last: NodeIndex,
     modified: i64,
+    newest: i64,
 }
 
-/// Where a record lies: its parent, its previous sibling and the parent's modification time.
+/// Where a record lies: its parent, its previous sibling, the parent's modification time and newest change.
 #[derive(Clone, Copy, Debug)]
 struct Place {
     parent: NodeIndex,
     last: NodeIndex,
     base: i64,
+    base_newest: i64,
 }
 
 /// One node's record, read; its name and hits are in the caller's buffers.
@@ -105,6 +111,8 @@ struct Record {
     hidden: u32,
     own: Sums,
     modified: i64,
+    /// The newest change of its subtree.
+    newest: i64,
     /// Its times and inside; only a node with hits has one.
     stamp: Option<Stamp>,
     owner: u32,
@@ -134,6 +142,10 @@ fn read_record(
     if modified < 0 && modified != i64::MIN {
         return Err(CodecError::OutOfRange);
     }
+    let newest = place.base_newest.wrapping_add(reader.i64()?);
+    if newest < 0 && newest != i64::MIN {
+        return Err(CodecError::OutOfRange);
+    }
     read_hits(reader, hits)?;
     let stamp = if hits.is_empty() { None } else { Some(read_stamp(reader, modified)?) };
     let owner = match reader.u64()? {
@@ -149,7 +161,7 @@ fn read_record(
     let [access] = reader.array::<1>()?;
     let access = NodeAccess::from_bits(access).ok_or(CodecError::BadFlags)?;
     let identity = if is_root { Some(FolderIdentity { device: reader.u64()?, file_id: reader.u64()? }) } else { None };
-    Ok(Record { flags, children, hidden, own, modified, stamp, owner, access, identity })
+    Ok(Record { flags, children, hidden, own, modified, newest, stamp, owner, access, identity })
 }
 
 /// Reads a front-coded name into `name`: the prefix it shares with `previous`, then the rest.
@@ -226,6 +238,7 @@ fn add(
     tree.add_hidden_folders(index, record.hidden)?;
     let modified = u64::try_from(record.modified).ok().map(Timestamp::from_secs);
     tree.set_modified(index, modified)?;
+    tree.join_newest(index, record.newest)?;
     tree.add_hits(index, hits)?;
     if let Some(stamp) = record.stamp {
         tree.set_times(index, stamp.times)?;

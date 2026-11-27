@@ -3,6 +3,13 @@
 use super::{ModuleSettings, SettingDescriptor, SettingError, SettingKey, SettingKind, SettingValue, Unit};
 use crate::ModuleId;
 
+/// The module that declares [`STALE_PROJECTS_UNUSED_FOR`].
+pub const STALE_PROJECTS_MODULE: &str = "stale-projects";
+
+/// `stale-projects.unused-for-days`: declared by the stale projects module, read by the engine for Largest's Folders.
+/// Never fewer than a month: a project is not stale the week after you left it.
+pub const STALE_PROJECTS_UNUSED_FOR: DaySetting = DaySetting::new("unused-for-days", 30, 3650, 365);
+
 /// A module's number-of-days setting: its name after `<module>.`, its range and its default. A module declares one as
 /// a constant and uses it for both the descriptor and the reading.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -16,6 +23,11 @@ pub struct DaySetting {
 impl DaySetting {
     pub const fn new(name: &'static str, min: u32, max: u32, default: u32) -> Self {
         Self { name, min, max, default }
+    }
+
+    /// The days when nothing is stored.
+    pub const fn default_days(&self) -> u32 {
+        self.default
     }
 
     /// `<module>.<name>`: a number of days from `min` to `max`. Refused when the name makes no key or the default is

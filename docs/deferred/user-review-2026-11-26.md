@@ -44,3 +44,26 @@ These calls were taken while building, without the user:
 
 Write the conclusions of every level of plan 043 and set the statuses to done. Then run `npm run pre-push`,
 squash-merge into `main`, and run `cargo clean`.
+
+## Plan 044's walk (on `feat/044-largest-folders`)
+
+Plan [044](../plans/044-largest-folders/readme.md) is built and reviewed up to step 04/02. Step
+[04/03](../plans/044-largest-folders/04-docs-and-walk/03-walk.md) is the user's walk. The branch starts from 043's
+branch: 043 is merged first, then 044 is rebased on `main`.
+
+1. `npm run dev:sandbox -- largest-folders`: walk the cases LF-01 to LF-04 of
+   [`../test-cases/largest-folders.md`](../test-cases/largest-folders.md). It writes about 2.6 GB.
+2. `npm run dev` on the real home: LF-05. Do the Folders tab, its bar, separator and tiles look as in the approved
+   mockup? Does Browse tick nothing? Is a long path cut in the middle well (a gap of up to one letter may show before
+   the last two names)?
+3. Settings: "Smallest folder on Largest" at 500 MB, 1 GB, 5 GB and 10 GB.
+
+Rulings worth a second look:
+
+- The Folders bar's "N more" segment is the list's size minus the drawn rows, worked out by the UI from the core's
+  sizes.
+- The accessible name of Show in Finder is "Show in Finder: {name}". The visible text is unchanged.
+- The peak memory of the large scan is 226 → 238 MB with the tree kept, from the 8 bytes `newest` adds to each node.
+- A file removed from Files inside a listed folder leaves that folder's row at the scan's size until the next scan.
+- The stale projects' description was shortened to fit and lost "without a build" after "Rust's build cache goes
+  after 7 days". Restore it in the conclusions.

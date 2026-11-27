@@ -4,6 +4,8 @@ import type {
   CleanupPlanView,
   Finding,
   FindingId,
+  FoldersPage,
+  FoldersQuery,
   ItemKind,
   KindCount,
   LargestPage,
@@ -21,7 +23,7 @@ import type {
 } from '../../src/ipc/bindings.generated';
 
 import { COMMANDS } from '../../src/ipc';
-import { LARGEST_ROWS, largestPageOf, ownFindingOf } from '../../src/test/largest-scan';
+import { LARGEST_ROWS, largestPageOf, ownFindingOf, FOLDERS as SCRIPTED_FOLDERS } from '../../src/test/largest-scan';
 
 // The Largest screen's commands of the mocked core: the Files list filtered as the core filters it, the home's folders
 // and one folder's page, and the pick of a row. It states only what the core can produce together: a pick only of a row
@@ -164,22 +166,20 @@ export const largestAnswerOf = (query: LargestQuery, picks: Picks = NO_PICKS): L
   };
 };
 
-const folderRowOf = ({ node, offer, opens }: Folder, picks: Picks): OwnRow => ({
+const folderRowOf = ({ node, offer, opens }: Folder): OwnRow => ({
   explained: sized(0),
   kind: 'folder',
   node,
   offer,
   opens,
-  picked: picks.ids.get(keyOf(node.id)) ?? null,
 });
 
-const fileRowOf = (row: LargestRow, picks: Picks): OwnRow => ({
+const fileRowOf = (row: LargestRow): OwnRow => ({
   explained: sized(0),
   kind: row.kind,
   node: row.node,
   offer: row.offer,
   opens: false,
-  picked: picks.ids.get(keyOf(row.node.id)) ?? null,
 });
 
 const pageOf = (path: readonly NodeInfo[], rows: readonly OwnRow[], offset: number, limit: number): OwnPlace => ({
@@ -198,7 +198,7 @@ export const placeAnswerOf = (
   picks: Picks = NO_PICKS,
 ): 'not-own-item' | 'stale-node' | OwnPlace => {
   if (folder === null || keyOf(folder) === HOME_INDEX) {
-    const rows = FOLDERS.filter(({ node }) => !picks.gone.has(keyOf(node.id))).map((one) => folderRowOf(one, picks));
+    const rows = FOLDERS.filter(({ node }) => !picks.gone.has(keyOf(node.id))).map(folderRowOf);
 
     return pageOf([HOME], rows, offset, limit);
   }
@@ -210,35 +210,42 @@ export const placeAnswerOf = (
   if (!opened.opens) {
     return 'not-own-item';
   }
-  const rows = LARGEST_ROWS.filter((row) => topOf(row) === opened && !picks.gone.has(keyOf(row.node.id))).map((row) =>
-    fileRowOf(row, picks),
+  const rows = LARGEST_ROWS.filter((row) => topOf(row) === opened && !picks.gone.has(keyOf(row.node.id))).map(
+    fileRowOf,
   );
 
   return pageOf([HOME, opened.node], rows, offset, limit);
 };
 
-// The finding the core makes of a node the user ticks, or `null` when it does not offer it: a row of the Files list
-// or a folder of the home that is offered.
+// The finding the core makes of a node the user ticks, or `null` when it does not offer it: only a row of the Files
+// list that is offered; a plain folder of Browse is refused.
 export const pickAnswerOf = (node: NodeId, picks: Picks = NO_PICKS): Finding | null => {
   const id = ownIdOf(node);
   const row = LARGEST_ROWS.find((one) => keyOf(one.node.id) === keyOf(node));
-  const folder = FOLDERS.find((one) => keyOf(one.node.id) === keyOf(node));
 
   if (picks.gone.has(keyOf(node)) || node.state !== STATE) {
     return null;
   }
-  if (row !== undefined) {
-    return row.offer.kind === 'offered' ? ownFindingOf(row, id) : null;
-  }
-  if (folder?.offer.kind !== 'offered') {
-    return null;
-  }
 
-  return ownFindingOf(
-    { kind: 'folder', node: folder.node, offer: folder.offer, picked: null, place: '~', unpacked: null },
-    id,
-  );
+  return row?.offer.kind === 'offered' ? ownFindingOf(row, id) : null;
 };
+
+// The core's most rows a page holds.
+const MAX_PAGE = 100;
+
+// What `get_largest_folders` answers: the folders left alone, largest first, one page of them.
+const foldersAnswerOf = (folders: FoldersPage, { limit, offset }: FoldersQuery): FoldersPage => {
+  const rows = [...folders.rows].sort((a, b) => b.node.sizes.allocated - a.node.sizes.allocated);
+
+  return { ...folders, offset, rows: rows.slice(offset, offset + Math.min(limit, MAX_PAGE)), total: rows.length };
+};
+
+// Whether `reveal_node` knows the node: a folder of the list or a node of the tree, of the state the scan has.
+const revealsNode = (folders: FoldersPage, node: NodeId): boolean =>
+  node.state === STATE &&
+  (folders.rows.some((row) => keyOf(row.node.id) === keyOf(node)) ||
+    FOLDERS.some((one) => keyOf(one.node.id) === keyOf(node)) ||
+    LARGEST_ROWS.some((one) => keyOf(one.node.id) === keyOf(node)));
 
 const NOT_OWN_ITEM: Refusal = {
   error: { code: 'not-own-item' },
@@ -247,7 +254,15 @@ const NOT_OWN_ITEM: Refusal = {
 
 const STALE_NODE: Refusal = { error: { code: 'stale-node' }, text: { args: {}, key: 'core.error.stale-node' } };
 
-const COMMAND_NAMES = [COMMANDS.getLargest, COMMANDS.getLargestPlace, COMMANDS.pickOwnItem] as const;
+const NO_SCAN: Refusal = { error: { code: 'no-scan' }, text: { args: {}, key: 'core.error.no-scan' } };
+
+const COMMAND_NAMES = [
+  COMMANDS.getLargest,
+  COMMANDS.getLargestFolders,
+  COMMANDS.getLargestPlace,
+  COMMANDS.pickOwnItem,
+  COMMANDS.revealNode,
+] as const;
 
 type Answer = { readonly answer: unknown } | { readonly refused: Refusal };
 
@@ -256,23 +271,39 @@ export const LARGEST_HOOK = '__fresherLargestInvoke';
 
 const ANSWER = '__fresherLargestAnswer';
 
+// The nodes the mock revealed in Finder, by index, in the page.
+const REVEALED = '__revealedNodes';
+
 type Setup = {
   readonly answer: string;
   readonly commands: readonly string[];
   readonly hook: string;
+  readonly revealed: string;
+  readonly revealNodeCommand: string;
+  readonly startScan: string;
 };
+
+// The nodes revealed in Finder so far, in the order of the calls.
+export const revealed = (page: Page): Promise<readonly number[]> =>
+  page.evaluate((key) => (globalThis as unknown as Record<string, number[]>)[key] ?? [], REVEALED);
 
 // Adds the Largest commands to the mocked core of `core-mock.ts`, which calls the hook for every command. The findings
 // the user picked join `findings`, so the cleanup mock plans over them; `moved` is told what a cleanup moved.
-export const mockLargest = async (page: Page, findings: Finding[]): Promise<(plan: CleanupPlanView) => void> => {
+export const mockLargest = async (
+  page: Page,
+  findings: Finding[],
+  folders: FoldersPage = SCRIPTED_FOLDERS,
+): Promise<(plan: CleanupPlanView) => void> => {
   const ids = new Map<number, FindingId>();
   const gone = new Set<number>();
   const picks = (): Picks => ({ gone, ids });
 
-  await page.exposeFunction(ANSWER, (command: string, args: Record<string, unknown>): Answer => {
+  await page.exposeFunction(ANSWER, (command: string, args: Record<string, unknown>, scanned: boolean): Answer => {
     switch (command) {
       case COMMANDS.getLargest:
         return { answer: largestAnswerOf(args.query as LargestQuery, picks()) };
+      case COMMANDS.getLargestFolders:
+        return scanned ? { answer: foldersAnswerOf(folders, args.query as FoldersQuery) } : { refused: NO_SCAN };
       case COMMANDS.getLargestPlace: {
         const answer = placeAnswerOf(
           args.folder as NodeId | null,
@@ -287,6 +318,12 @@ export const mockLargest = async (page: Page, findings: Finding[]): Promise<(pla
             ? { refused: NOT_OWN_ITEM }
             : { answer };
       }
+      case COMMANDS.revealNode:
+        if (!scanned) {
+          return { refused: NO_SCAN };
+        }
+
+        return revealsNode(folders, args.node as NodeId) ? { answer: null } : { refused: STALE_NODE };
       default: {
         const node = args.node as NodeId;
         const finding = pickAnswerOf(node, picks());
@@ -307,21 +344,45 @@ export const mockLargest = async (page: Page, findings: Finding[]): Promise<(pla
     (setup: Setup) => {
       const scope = globalThis as unknown as Record<string, unknown>;
 
+      const seen: number[] = [];
+
+      let scanned = false;
+
+      scope[setup.revealed] = seen;
       scope[setup.hook] = (command: string, args: Record<string, unknown>): Promise<unknown> | undefined => {
+        if (command === setup.startScan) {
+          scanned = true;
+        }
         if (!setup.commands.includes(command)) {
           return undefined;
         }
-        const answer = scope[setup.answer] as (command: string, args: Record<string, unknown>) => Promise<Answer>;
+        const answer = scope[setup.answer] as (
+          command: string,
+          args: Record<string, unknown>,
+          scanned: boolean,
+        ) => Promise<Answer>;
 
-        return answer(command, args).then((result) =>
-          'refused' in result
-            ? // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- the core rejects with a plain object
-              Promise.reject(result.refused)
-            : result.answer,
-        );
+        return answer(command, args, scanned).then((result) => {
+          if ('refused' in result) {
+            // eslint-disable-next-line @typescript-eslint/only-throw-error -- the core rejects with a plain object
+            throw result.refused;
+          }
+          if (command === setup.revealNodeCommand) {
+            seen.push((args.node as { readonly index: number }).index);
+          }
+
+          return result.answer;
+        });
       };
     },
-    { answer: ANSWER, commands: COMMAND_NAMES, hook: LARGEST_HOOK } satisfies Setup,
+    {
+      answer: ANSWER,
+      commands: COMMAND_NAMES,
+      hook: LARGEST_HOOK,
+      revealed: REVEALED,
+      revealNodeCommand: COMMANDS.revealNode,
+      startScan: COMMANDS.startScan,
+    } satisfies Setup,
   );
 
   return (plan) => {

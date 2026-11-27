@@ -1,0 +1,26 @@
+/*
+ * A folder left alone: a name over two lines of small text, so the row is as tall as an own item's. The size sits in a
+ * column of fixed width, so the sizes line up down the list.
+ */
+@layer components {
+  .rows {
+    --size-row: 64px;
+    --folder-size-width: 80px;
+  }
+
+  .line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .value {
+    display: inline-flex;
+    width: var(--folder-size-width);
+    justify-content: flex-end;
+    color: var(--text-primary);
+  }
+}

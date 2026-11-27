@@ -16,3 +16,6 @@ file inside a subfolder is written in place.
   a `Match` would carry the newest (`Match::newest_child` or a field of `EntryFacts`), filled by the aggregator for a
   `Claim::Whole` folder.
 - The module's `age` taking it; a fixture whose folder is old but whose child is fresh, kept.
+
+Plan [044](../plans/044-largest-folders/readme.md) keeps each folder's newest change in the scan tree (`Node.newest`).
+It is known only after the walk, so it does not serve a module's `Match` during it; the item stays deferred.

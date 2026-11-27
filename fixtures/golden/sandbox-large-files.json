@@ -28,16 +28,6 @@
         "outcome": {
           "kind": "moved"
         },
-        "path": "home/Old projects",
-        "trash": "in-trash"
-      },
-      {
-        "action": "remove",
-        "category": "core.own-file",
-        "danger": "high",
-        "outcome": {
-          "kind": "moved"
-        },
         "path": "home/VMs/Old.utm",
         "trash": "in-trash"
       },
@@ -70,14 +60,6 @@
       "logical": 16777216,
       "module": "core",
       "subject": "home/Images/Installer.dmg"
-    },
-    {
-      "app": null,
-      "category": "core.own-file",
-      "danger": "high",
-      "logical": 12582912,
-      "module": "core",
-      "subject": "home/Old projects"
     },
     {
       "app": null,
@@ -127,15 +109,6 @@
       },
       {
         "allocated": 12582912,
-        "kind": "file",
-        "offer": {
-          "kind": "offered"
-        },
-        "path": "home/Old projects/site/data.bin",
-        "unpacked": null
-      },
-      {
-        "allocated": 12582912,
         "kind": "virtual-machine",
         "offer": {
           "kind": "offered"
@@ -152,15 +125,6 @@
         "offer": {
           "kind": "withheld",
           "reason": "standard-folder"
-        },
-        "opens": true
-      },
-      {
-        "at": "home/Old projects",
-        "case": "a large folder can be chosen whole",
-        "kind": "folder",
-        "offer": {
-          "kind": "offered"
         },
         "opens": true
       }
@@ -180,7 +144,7 @@
             }
           },
           {
-            "allocated": 115347456,
+            "allocated": 102764544,
             "part": {
               "kind": "your-folders"
             }
@@ -220,7 +184,7 @@
             }
           },
           {
-            "allocated": 597679584,
+            "allocated": 610262496,
             "part": {
               "kind": "disk-own"
             }
@@ -238,11 +202,11 @@
   "trash": {
     "after": [
       {
-        "fromCleanups": 69206016,
+        "fromCleanups": 56623104,
         "goneBy": null,
         "index": 0,
         "volume": "Sandbox",
-        "waiting": 81788928
+        "waiting": 69206016
       }
     ],
     "before": [
@@ -296,21 +260,6 @@
         "kind": "file",
         "logical_size": 16777216,
         "path": "home/.Trash/Installer.dmg"
-      },
-      {
-        "kind": "dir",
-        "logical_size": 0,
-        "path": "home/.Trash/Old projects"
-      },
-      {
-        "kind": "dir",
-        "logical_size": 0,
-        "path": "home/.Trash/Old projects/site"
-      },
-      {
-        "kind": "file",
-        "logical_size": 12582912,
-        "path": "home/.Trash/Old projects/site/data.bin"
       },
       {
         "kind": "dir",
@@ -458,6 +407,6 @@
         "path": "world.toml"
       }
     ],
-    "totalLogicalSize": 140517920
+    "totalLogicalSize": 127935008
   }
 }

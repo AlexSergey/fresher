@@ -8,8 +8,8 @@ use crate::CaseError;
 use crate::case::{is_bundle_name, is_plain};
 use fresher_testing::TreeDescription;
 
-/// What the Largest screen must show of a case's files (`[case.largest]`): a row offered, nothing listed, a folder
-/// withheld for a reason, or a guarded folder not seen.
+/// What the Largest screen must show of a case's files (`[case.largest]`): a row offered, nothing listed, a Browse row
+/// withheld for a reason, a guarded folder not seen, or a folder listed or not listed among the folders left alone.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LargestExpectation {
     shown: Shown,
@@ -17,6 +17,7 @@ pub struct LargestExpectation {
     kind: Option<ItemKind>,
     withheld: Option<Withheld>,
     unpacked: Option<String>,
+    project: Option<bool>,
 }
 
 /// How the Largest screen shows the case's `at`.
@@ -26,18 +27,24 @@ pub enum Shown {
     Offered,
     /// No Files row at or below `at`.
     Absent,
-    /// The Folders row at `at` cannot be chosen, for the case's `withheld` reason.
+    /// The Browse row at `at` carries the case's `withheld` reason.
     Withheld,
     /// No Files row at or below `at`, and the last scan did not enter the guarded folder `at` is in.
     NotSeen,
+    /// The folder `at` is a row of the Folders list (the folders left alone), as a project when the case says.
+    Listed,
+    /// The folder `at` is no row of the Folders list.
+    Unlisted,
 }
 
 impl Shown {
-    const ALL: [(&'static str, Self); 4] = [
+    const ALL: [(&'static str, Self); 6] = [
         ("offered", Self::Offered),
         ("absent", Self::Absent),
         ("withheld", Self::Withheld),
         ("not-seen", Self::NotSeen),
+        ("listed", Self::Listed),
+        ("unlisted", Self::Unlisted),
     ];
 }
 
@@ -50,12 +57,21 @@ pub(crate) struct RawLargest {
     kind: Option<String>,
     withheld: Option<String>,
     unpacked: Option<String>,
+    project: Option<bool>,
+}
+
+impl RawLargest {
+    /// Whether the table says a folder is listed on Folders: a positive case, which cleans nothing.
+    pub(crate) fn lists_a_folder(&self) -> bool {
+        self.shown == "listed"
+    }
 }
 
 impl LargestExpectation {
     /// Checks the table against the case's files: `at` is one of the case's paths or their folders (by default its
     /// first file, which only `offered` and `absent` may leave out); `withheld` with `shown = "withheld"` and only
-    /// with it; `kind` and `unpacked` with `offered` only.
+    /// with it; `kind` and `unpacked` with `offered` only; `project` with `listed` only; `listed` and `unlisted` at a
+    /// folder of the case.
     pub(crate) fn from_raw(case: &str, tree: &TreeDescription, raw: RawLargest) -> Result<Self, CaseError> {
         let shown = Shown::ALL
             .iter()
@@ -67,11 +83,15 @@ impl LargestExpectation {
                 withheld_named(&reason)
                     .ok_or_else(|| CaseError::LargestWithheldReason { case: case.into(), reason })?,
             ),
-            (Shown::Withheld, None) | (Shown::Offered | Shown::Absent | Shown::NotSeen, Some(_)) => {
+            (Shown::Withheld, None)
+            | (Shown::Offered | Shown::Absent | Shown::NotSeen | Shown::Listed | Shown::Unlisted, Some(_)) => {
                 return Err(CaseError::LargestWithheld { case: case.into() });
             }
-            (Shown::Offered | Shown::Absent | Shown::NotSeen, None) => None,
+            (Shown::Offered | Shown::Absent | Shown::NotSeen | Shown::Listed | Shown::Unlisted, None) => None,
         };
+        if raw.project.is_some() && shown != Shown::Listed {
+            return Err(CaseError::LargestProject { case: case.into() });
+        }
         if shown != Shown::Offered {
             let field = match (&raw.kind, &raw.unpacked) {
                 (Some(_), _) => Some("kind"),
@@ -97,13 +117,18 @@ impl LargestExpectation {
                 .next()
                 .map(Path::to_path_buf)
                 .ok_or_else(|| CaseError::LargestWithoutAt { case: case.into() })?,
-            (None, Shown::Withheld | Shown::NotSeen) => return Err(CaseError::LargestWithoutAt { case: case.into() }),
+            (None, Shown::Withheld | Shown::NotSeen | Shown::Listed | Shown::Unlisted) => {
+                return Err(CaseError::LargestWithoutAt { case: case.into() });
+            }
         };
         let own = tree.paths().chain(tree.markers()).any(|path| path.ancestors().any(|folder| folder == at));
         if !is_plain(&at) || !own {
             return Err(CaseError::LargestAtOutsideTheCase { case: case.into(), at });
         }
-        Ok(Self { shown, at, kind, withheld, unpacked: raw.unpacked })
+        if matches!(shown, Shown::Listed | Shown::Unlisted) && tree.files().any(|file| file == at) {
+            return Err(CaseError::LargestAtIsAFile { case: case.into(), at });
+        }
+        Ok(Self { shown, at, kind, withheld, unpacked: raw.unpacked, project: raw.project })
     }
 
     /// How the screen shows `at`.
@@ -124,6 +149,11 @@ impl LargestExpectation {
     /// Why the row cannot be chosen: given with `Shown::Withheld`, and only with it.
     pub const fn withheld(&self) -> Option<Withheld> {
         self.withheld
+    }
+
+    /// Whether a listed folder is a project, when the case says.
+    pub const fn project(&self) -> Option<bool> {
+        self.project
     }
 
     /// The folder an offered archive's row names beside it, when the case says.
@@ -170,7 +200,7 @@ mod tests {
 
         #[test]
         fn an_unknown_shown_is_refused() {
-            for shown in ["listed", "Offered", ""] {
+            for shown in ["Listed", "Offered", ""] {
                 let error = refused(&with_largest("negative", &format!("shown = \"{shown}\"\n")));
 
                 assert!(
@@ -178,13 +208,56 @@ mod tests {
                     if case == "c" && found == shown),
                     "{shown}: {error}"
                 );
-                assert!(error.to_string().contains("offered, absent, withheld or not-seen"), "{error}");
+                assert!(
+                    error.to_string().contains("offered, absent, withheld, not-seen, listed or unlisted"),
+                    "{error}"
+                );
+            }
+        }
+
+        #[test]
+        fn a_project_without_listed_is_refused() {
+            for shown in ["offered", "absent", "withheld", "not-seen", "unlisted"] {
+                let withheld = if shown == "withheld" { "withheld = \"standard-folder\"\n" } else { "" };
+                let body = format!("shown = \"{shown}\"\nat = \"home/Movies\"\n{withheld}project = true\n");
+
+                let error = refused(&with_largest("negative", &body));
+
+                assert!(matches!(&error, CaseError::LargestProject { case } if case == "c"), "{shown}: {error}");
+            }
+        }
+
+        #[test]
+        fn a_positive_that_only_unlists_a_folder_is_refused() {
+            let text = with_largest("negative", "shown = \"unlisted\"\nat = \"home/Movies\"\n")
+                .replace("kind = \"negative\"", "kind = \"positive\"");
+
+            assert!(matches!(refused(&text), CaseError::PositiveWithoutExpect { .. }));
+        }
+
+        #[test]
+        fn listed_or_unlisted_at_a_file_is_refused() {
+            for shown in ["listed", "unlisted"] {
+                let body = format!("shown = \"{shown}\"\nat = \"home/Movies/a.txt\"\n");
+
+                let error = refused(&with_largest("negative", &body));
+
+                assert!(matches!(&error, CaseError::LargestAtIsAFile { case, .. } if case == "c"), "{shown}: {error}");
+            }
+        }
+
+        #[test]
+        fn listed_or_unlisted_without_an_at_is_refused() {
+            for shown in ["listed", "unlisted"] {
+                let error = refused(&with_largest("negative", &format!("shown = \"{shown}\"\n")));
+
+                assert!(matches!(&error, CaseError::LargestWithoutAt { case } if case == "c"), "{shown}: {error}");
             }
         }
 
         #[test]
         fn a_withheld_without_shown_withheld_is_refused() {
-            for shown in ["offered", "absent", "not-seen"] {
+            for shown in ["offered", "absent", "not-seen", "listed", "unlisted"] {
                 let body = format!("shown = \"{shown}\"\nat = \"home/Movies\"\nwithheld = \"standard-folder\"\n");
 
                 let error = refused(&with_largest("negative", &body));
@@ -335,6 +408,45 @@ mod tests {
             let largest = parsed("negative", "shown = \"not-seen\"\nat = \"home/Movies\"\n");
 
             assert_eq!((largest.shown(), largest.at()), (Shown::NotSeen, Path::new("home/Movies")));
+        }
+
+        #[test]
+        fn listed_and_unlisted_are_read() {
+            for (shown, expected) in [("listed", Shown::Listed), ("unlisted", Shown::Unlisted)] {
+                let largest = parsed("negative", &format!("shown = \"{shown}\"\nat = \"home/Movies\"\n"));
+
+                assert_eq!((largest.shown(), largest.at()), (expected, Path::new("home/Movies")));
+                assert_eq!((largest.project(), largest.withheld(), largest.kind()), (None, None, None));
+            }
+        }
+
+        #[test]
+        fn a_positive_that_lists_a_folder_needs_no_expect() {
+            let text = with_largest("negative", "shown = \"listed\"\nat = \"home/Movies\"\n")
+                .replace("kind = \"negative\"", "kind = \"positive\"");
+
+            let file = CaseFile::parse(&text).unwrap();
+
+            assert!(file.cases()[0].expect().is_none());
+            assert_eq!(file.cases()[0].largest().unwrap().shown(), Shown::Listed);
+        }
+
+        #[test]
+        fn a_listed_project_is_read() {
+            for (written, project) in [("true", true), ("false", false)] {
+                let body = format!("shown = \"listed\"\nat = \"home/VMs\"\nproject = {written}\n");
+
+                assert_eq!(parsed("negative", &body).project(), Some(project));
+            }
+        }
+
+        #[test]
+        fn withheld_still_names_a_reason() {
+            let largest =
+                parsed("negative", "shown = \"withheld\"\nat = \"home/VMs/Old.utm\"\nwithheld = \"standard-folder\"\n");
+
+            assert_eq!((largest.shown(), largest.withheld()), (Shown::Withheld, Some(Withheld::StandardFolder)));
+            assert_eq!(largest.project(), None);
         }
 
         #[test]

@@ -9,17 +9,21 @@ import { SizeText } from '../../design/data/size-text/size-text';
 import { Button } from '../../design/primitives/button/button';
 import { Checkbox } from '../../design/primitives/checkbox/checkbox';
 import { t, tText } from '../../i18n';
+import { MiddlePath } from '../middle-path/middle-path';
 import { honestSize } from '../sizes';
 import styles from './own-item-row.module.css';
 
 export type OwnItemRowProps = Forced &
   Partial<VirtualRowProps> & {
-    readonly checked: boolean;
+    // Whether a row of Files is ticked; a Browse row is never ticked.
+    readonly checked?: boolean;
     // "Open" on a folder that opens; without it the row has no button.
     readonly onOpen?: () => void;
-    // Ticks or unticks an offered row; without it the row has no checkbox.
+    // "Show in Finder"; without it the row has no button.
+    readonly onReveal?: () => void;
+    // Ticks or unticks an offered row of Files; without it the row has no checkbox.
     readonly onToggle?: () => void;
-    // A row of the Files list or of a folder.
+    // A row of Files (`LargestRow`) or a read-only row of Browse (`OwnRow`).
     readonly row: LargestRow | OwnRow;
   };
 
@@ -36,21 +40,28 @@ const text = (key: string, args: Readonly<Record<string, string>> = {}): string 
 
 // One item of the Largest screen: its name over its kind, where it is (or what of it Scan explains) and when it
 // changed, then the folder an archive may have been unpacked into, or why the item cannot be chosen. The checkbox
-// stands only on a row the core offers; the size ends the row.
-export const OwnItemRow = ({ checked, onOpen, onToggle, row, ...forced }: OwnItemRowProps): JSX.Element => {
+// stands only on a row of Files the core offers; a row of Browse has none, nor a place for one. The size ends the row.
+export const OwnItemRow = ({
+  checked = false,
+  onOpen,
+  onReveal,
+  onToggle,
+  row,
+  ...forced
+}: OwnItemRowProps): JSX.Element => {
   const { node, offer } = row;
   const size = honestSize(node.sizes);
   const offered = offer.kind === 'offered';
-  const where = isFile(row)
-    ? row.place
-    : row.explained.allocated === 0
+  const kind = text(`core.largest.kind.${row.kind}`);
+  const changed =
+    node.modified === null ? null : t('ui.own-item-row.changed', { when: { kind: 'date', value: node.modified } });
+  // A file's place is cut in the middle when the line is short, so it is a piece of its own.
+  const place = isFile(row) ? row.place : null;
+  const explained =
+    isFile(row) || row.explained.allocated === 0
       ? null
       : t('ui.own-item-row.explained', { size: { kind: 'size', value: row.explained.allocated } });
-  const meta = [
-    text(`core.largest.kind.${row.kind}`),
-    ...(where === null ? [] : [where]),
-    ...(node.modified === null ? [] : [t('ui.own-item-row.changed', { when: { kind: 'date', value: node.modified } })]),
-  ].join(' · ');
+  const meta = [kind, ...(explained === null ? [] : [explained]), ...(changed === null ? [] : [changed])].join(' · ');
   const note = !offered
     ? text(`core.largest.withheld.${offer.reason}`)
     : isFile(row) && row.unpacked !== null
@@ -61,7 +72,7 @@ export const OwnItemRow = ({ checked, onOpen, onToggle, row, ...forced }: OwnIte
     <ListRow
       {...forced}
       leading={
-        offered && onToggle !== undefined ? (
+        !isFile(row) ? undefined : offered && onToggle !== undefined ? (
           <Checkbox
             checked={checked}
             hideLabel
@@ -80,7 +91,15 @@ export const OwnItemRow = ({ checked, onOpen, onToggle, row, ...forced }: OwnIte
       selected={offered && checked}
       subtitle={
         <>
-          <span className={styles.line}>{meta}</span>
+          {place === null ? (
+            <span className={styles.line}>{meta}</span>
+          ) : (
+            <span className={`${styles.line} ${styles.meta}`}>
+              <span>{`${kind} · `}</span>
+              <MiddlePath path={place} />
+              {changed === null ? null : <span>{` · ${changed}`}</span>}
+            </span>
+          )}
           {note === null ? null : <span className={styles.line}>{note}</span>}
         </>
       }
@@ -90,6 +109,16 @@ export const OwnItemRow = ({ checked, onOpen, onToggle, row, ...forced }: OwnIte
           {onOpen === undefined ? null : (
             <Button onClick={onOpen} size="small">
               {t('ui.own-item-row.open')}
+            </Button>
+          )}
+          {onReveal === undefined ? null : (
+            <Button
+              aria-label={t('ui.folder-row.reveal-label', { name: { kind: 'text', value: node.name } })}
+              onClick={onReveal}
+              size="small"
+              variant="secondary"
+            >
+              {t('ui.folder-row.reveal')}
             </Button>
           )}
           <span className={styles.value}>

@@ -9,12 +9,13 @@ use proptest::prelude::*;
 use crate::codec::encode::GROUP_KINDS;
 use crate::tree::access::NodeAccess;
 use crate::tree::arena::{Shared, Tree};
-use crate::tree::node::{Flag, Hit, NodeIndex, Sums};
+use crate::tree::node::{Flag, Hit, NodeIndex, Sums, time_bits};
 use crate::tree::testing::{Shape, canonical, sums};
 use crate::tree::times::{Stamp, Times};
 
-/// Everything a body keeps of a tree: the canonical nodes, each node's time, owner, access and stamp, the roots'
-/// identities, and every group with the paths of its members and the bytes it counts once.
+/// Everything a body keeps of a tree: the canonical nodes (their newest changes included), each node's time, owner,
+/// access and stamp, the roots' identities, and every group with the paths of its members and the bytes it counts
+/// once.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Snapshot {
     pub(crate) shapes: Vec<Shape>,
@@ -73,9 +74,12 @@ pub(crate) fn small_tree() -> Tree {
         let cache = folder(&mut tree, caches, name, sums(5, size * MIB, size * MIB, size * MIB));
         tree.set_modified(cache, Some(Timestamp::from_secs(1_763_000_100 + size))).unwrap();
     }
+    tree.join_newest(caches, time_bits(Some(Timestamp::from_secs(1_763_000_500)))).unwrap();
+    tree.join_newest(library, time_bits(Some(Timestamp::from_secs(1_763_000_050)))).unwrap();
     let mail = folder(&mut tree, library, "Mail", Sums::ZERO);
     tree.mark_unreadable(mail, Unreadable::NoPermission).unwrap();
     let projects = folder(&mut tree, home, "projects", sums(2, 500, 8192, 8192));
+    tree.join_newest(projects, time_bits(Some(Timestamp::from_secs(1_700_000_000)))).unwrap();
     let app = folder(&mut tree, projects, "app", sums(3, 900, 12_288, 12_288));
     let modules = folder(&mut tree, app, "node_modules", Sums::ZERO);
     tree.add_hits(modules, &[Hit { interest: 3, marker: None, siblings: 0b101, holds: 0b110 }]).unwrap();
@@ -147,6 +151,8 @@ pub(crate) struct NodeSpec {
     kind: u8,
     own: Sums,
     modified: Option<u32>,
+    /// The newest change of its own listing.
+    newest: Option<u32>,
     hits: Vec<(u32, u8, u64, u64)>,
     owner: Option<u8>,
     /// The bits of its access.
@@ -176,6 +182,7 @@ pub(crate) fn node_specs(max: usize) -> impl Strategy<Value = (bool, Vec<NodeSpe
         0..4_u8,
         own,
         prop::option::of(1_700_000_000..1_800_000_000_u32),
+        time(),
         prop::option::weighted(0.2, hits),
         prop::option::weighted(0.1, 0..3_u8),
         0..32_u8,
@@ -183,11 +190,12 @@ pub(crate) fn node_specs(max: usize) -> impl Strategy<Value = (bool, Vec<NodeSpe
         shared,
         stamp,
     )
-        .prop_map(|(parent, kind, own, modified, hits, owner, access, state, shared, stamp)| NodeSpec {
+        .prop_map(|(parent, kind, own, modified, newest, hits, owner, access, state, shared, stamp)| NodeSpec {
             parent,
             kind,
             own,
             modified,
+            newest,
             hits: hits.unwrap_or_default(),
             owner,
             access,
@@ -215,6 +223,7 @@ pub(crate) fn build(two_roots: bool, specs: &[NodeSpec]) -> Tree {
         let own = if kind == EntryKind::Folder { spec.own } else { Sums { files: 0, ..spec.own } };
         tree.add_own(index, own).unwrap();
         tree.set_modified(index, spec.modified.map(|secs| Timestamp::from_secs(u64::from(secs)))).unwrap();
+        tree.join_newest(index, time_bits(spec.newest.map(|secs| Timestamp::from_secs(u64::from(secs))))).unwrap();
         tree.set_access(index, NodeAccess::from_bits(spec.access).unwrap()).unwrap();
         let hits: Vec<Hit> = spec
             .hits

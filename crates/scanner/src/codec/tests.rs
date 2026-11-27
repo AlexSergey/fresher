@@ -13,7 +13,7 @@ fn handmade(children: u64, nodes: u64, records: &[&[u8]]) -> Vec<u8> {
     write_u64(&mut out, nodes);
     out.extend_from_slice(&[0, 2, b'/', b'r', 1]);
     write_u64(&mut out, children);
-    out.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2]);
+    out.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2]);
     for record in records {
         out.extend_from_slice(record);
     }
@@ -25,9 +25,12 @@ fn handmade(children: u64, nodes: u64, records: &[&[u8]]) -> Vec<u8> {
 fn file_record(shared: u8, rest: &[u8]) -> Vec<u8> {
     let mut record = vec![shared, u8::try_from(rest.len()).unwrap()];
     record.extend_from_slice(rest);
-    record.extend_from_slice(&[2, 1, 0, 0, 0, 0, 0, 0, 0]);
+    record.extend_from_slice(&[2, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
     record
 }
+
+/// Where a kept file's record of a one-byte name holds its newest change.
+const FILE_NEWEST: usize = 9;
 
 mod negative {
     use crate::codec::CodecError;
@@ -35,7 +38,7 @@ mod negative {
     use crate::codec::encode::encode;
     use crate::codec::header::testing::header;
     use crate::codec::testing::small_tree;
-    use crate::codec::tests::{file_record, handmade};
+    use crate::codec::tests::{FILE_NEWEST, file_record, handmade};
     use crate::tree::testing::rooted;
 
     #[test]
@@ -63,10 +66,18 @@ mod negative {
     }
 
     #[test]
-    fn a_body_of_tree_format_5_is_refused() {
+    fn a_body_of_format_6_is_refused() {
         let mut body = encode(&small_tree(), &header()).unwrap();
-        body[..2].copy_from_slice(&5_u16.to_le_bytes());
-        assert_eq!(decode(&body).err(), Some(CodecError::OtherFormat { found: 5 }));
+        body[..2].copy_from_slice(&6_u16.to_le_bytes());
+        assert_eq!(decode(&body).err(), Some(CodecError::OtherFormat { found: 6 }));
+    }
+
+    #[test]
+    fn a_negative_newest_is_refused() {
+        let mut record = file_record(0, b"a");
+        assert!(decode(&handmade(1, 2, &[&record])).is_ok());
+        record[FILE_NEWEST] = 1;
+        assert_eq!(decode(&handmade(1, 2, &[&record])).err(), Some(CodecError::OutOfRange));
     }
 
     #[test]
@@ -136,17 +147,17 @@ mod negative {
 mod positive {
     use std::path::Path;
 
-    use fresher_core::{ByteSize, EntryKind, FolderIdentity, ScanCache, ScopeKey};
+    use fresher_core::{ByteSize, EntryKind, FolderIdentity, ScanCache, ScopeKey, Timestamp};
     use fresher_testing::MemoryScanCache;
 
     use crate::codec::decode::decode;
-    use crate::codec::encode::encode;
+    use crate::codec::encode::{Layout, encode};
     use crate::codec::header::testing::header;
     use crate::codec::testing::{small_tree, snapshot, wide_tree};
     use crate::codec::tests::{file_record, handmade};
     use crate::tree::access::NodeAccess;
     use crate::tree::arena::Tree;
-    use crate::tree::node::Hit;
+    use crate::tree::node::{Hit, time_bits};
     use crate::tree::testing::{canonical, rooted};
 
     #[test]
@@ -157,6 +168,39 @@ mod positive {
         assert_eq!(read, header());
         assert_eq!(snapshot(&decoded), snapshot(&tree));
         assert_eq!(encode(&decoded, &header()).unwrap(), body, "a second write gives the same bytes");
+    }
+
+    #[test]
+    fn the_newest_survives_a_round_trip() {
+        let tree = small_tree();
+        let (decoded, _) = decode(&encode(&tree, &header()).unwrap()).unwrap();
+        let newest = |tree: &Tree| canonical(tree).iter().map(|shape| shape.newest).collect::<Vec<_>>();
+        assert_eq!(newest(&decoded), newest(&tree));
+        let at = |secs| Some(Timestamp::from_secs(secs));
+        let root = decoded.roots()[0].node;
+        assert_eq!(decoded.newest(root), at(1_763_000_500));
+        assert_eq!(decoded.newest(decoded.lookup(Path::new("/home/user/Library")).unwrap()), at(1_763_000_500));
+        assert_eq!(decoded.newest(decoded.lookup(Path::new("/home/user/Documents")).unwrap()), None);
+    }
+
+    #[test]
+    fn a_collapsed_record_keeps_its_subtrees_newest() {
+        let (mut tree, root) = rooted("/r");
+        let outer = tree.add_child(root, b"outer", EntryKind::Folder).unwrap();
+        let inner = tree.add_child(outer, b"inner", EntryKind::Folder).unwrap();
+        tree.join_newest(outer, time_bits(Some(Timestamp::from_secs(100)))).unwrap();
+        tree.join_newest(inner, time_bits(Some(Timestamp::from_secs(500)))).unwrap();
+        tree.freeze();
+        let mut collapsed = vec![false; tree.len()];
+        collapsed[outer.get().unwrap()] = true;
+
+        let body = Layout::new(&tree, &header(), Some(&collapsed)).unwrap().write(&header(), None);
+        let (decoded, _) = decode(&body).unwrap();
+
+        let outer = decoded.lookup(Path::new("/r/outer")).unwrap();
+        assert_eq!(decoded.children(outer).count(), 0);
+        assert_eq!(decoded.newest(outer), Some(Timestamp::from_secs(500)));
+        assert_eq!(decoded.newest(decoded.roots()[0].node), Some(Timestamp::from_secs(500)));
     }
 
     #[test]
@@ -240,13 +284,14 @@ mod positive {
         assert_eq!(snapshot(&decode(&loaded).unwrap().0), snapshot(&small_tree()));
     }
 
+    /// The bar is docs/testing.md's: the cache's bytes per node at most 32.
     #[test]
-    fn cache_bytes_per_folder_node_stay_under_24() {
+    fn cache_bytes_per_folder_node_stay_under_32() {
         const NODES: usize = 100_000;
         let tree = wide_tree(NODES);
         let body = encode(&tree, &header()).unwrap();
         let per_node = body.len() / NODES;
-        assert!(per_node < 24, "{} bytes for {NODES} folder nodes", body.len());
+        assert!(per_node < 32, "{} bytes for {NODES} folder nodes", body.len());
         assert_eq!(decode(&body).unwrap().0.len(), NODES);
     }
 }

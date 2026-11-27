@@ -21,12 +21,15 @@ const CAPACITY: u64 = 1024 * MIB;
 
 /// The fake volume the sandbox is on: 1 GiB, the files of the tree and 64 MiB more used, 256 MiB free, so the
 /// remainder and Free are the same on every machine. The tree's size is capped to what the volume can hold: a sparse
-/// file of a case file (2 GB) counts its logical size but takes no block.
-pub(crate) fn sandbox_disk(tree_size: u64) -> DiskSpace {
-    let room = CAPACITY - 64 * MIB - 256 * MIB;
+/// file of a case file (2 GB) counts its logical size but takes no block. A tree that writes more real data than the
+/// volume holds (`filled`: `largest-folders` fills about 2.6 GB) gets a volume as large as it needs, with the same
+/// 64 MiB and 256 MiB beside it.
+pub(crate) fn sandbox_disk(tree_size: u64, filled: u64) -> DiskSpace {
+    let capacity = CAPACITY.max(filled + 64 * MIB + 256 * MIB);
+    let room = capacity - 64 * MIB - 256 * MIB;
     FakeVolumes::disk(
         "Sandbox",
-        ByteSize::new(CAPACITY),
+        ByteSize::new(capacity),
         ByteSize::new(tree_size.min(room) + 64 * MIB),
         ByteSize::new(256 * MIB),
     )
@@ -68,8 +71,10 @@ pub(crate) fn check_map(
 /// them, so they have no failing test of their own here; the engine's tests cover them.
 fn check_totals(name: &str, volume: &VolumeMap, groups: &[MeaningGroup], state: &dyn DiskState) -> Result<(), Failure> {
     let parts: u64 = volume.parts().iter().map(|part| part.sizes.allocated.bytes()).sum();
-    if volume.capacity().bytes() != CAPACITY || parts != CAPACITY {
-        let problem = format!("the map's parts add up to {parts} of {}, not to {CAPACITY}", volume.capacity().bytes());
+    let capacity = volume.capacity().bytes();
+    if capacity < CAPACITY || parts != capacity {
+        let problem =
+            format!("the map's parts add up to {parts} of {capacity}, not to the capacity of at least {CAPACITY}");
         return Err(failure(name, problem));
     }
     let by_meaning: u64 = groups.iter().map(|group| group_size(group).bytes()).sum();
@@ -81,9 +86,9 @@ fn check_totals(name: &str, volume: &VolumeMap, groups: &[MeaningGroup], state: 
         .filter(|part| !matches!(part.kind, PartKind::Explained | PartKind::YourFolders))
         .map(|part| part.sizes.allocated.bytes())
         .sum();
-    if by_meaning != CAPACITY || scanned + not_files != CAPACITY {
+    if by_meaning != capacity || scanned + not_files != capacity {
         let problem =
-            format!("by meaning {by_meaning}, by place {}, the map {CAPACITY}: not one total", scanned + not_files);
+            format!("by meaning {by_meaning}, by place {}, the map {capacity}: not one total", scanned + not_files);
         return Err(failure(name, problem));
     }
     Ok(())

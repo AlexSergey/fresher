@@ -416,6 +416,8 @@ default smallest size, at none (the tree's files are sparse and kept as no node,
 and keeps nothing), and with a rule that calls every folder from some depth an item, filling the list to its 10 000; it
 prints the time and the heap of the kept items:
 `cargo nextest run -p fresher-e2e --release --run-ignored only --no-capture items_of_the_large_tree`.
+The Folders list (plan 044) has its own, `folders_of_the_large_tree` (at no smallest size, once with every folder left
+alone and once with none, over the same claims), run the same way.
 
 **The footprint test** (`crates/e2e/tests/footprint.rs`): ten scans of a generated tree through the real scanner and
 `FileScanCache` on a temporary data folder, with a scripted journal and changes between the scans; the data folder
@@ -466,7 +468,7 @@ target = "Library/Caches/com.example.editor/Cache.db"
 # (FIXTURE_NOW for `FixtureTree`), so a stale file stays stale; "-2d" is a time after it. `age` and `modified` never
 # go together.
 # `fill = "data"` writes real bytes of a fixed pattern instead of a sparse file, so freed space can be measured
-# (at most 64 MiB a file and 512 MiB a description; a larger one is refused). `fill = "cachedir-tag"` writes a valid
+# (at most 1 GiB a file and 4 GiB a description; a larger one is refused). `fill = "cachedir-tag"` writes a valid
 # cache directory tag (its standard signature line, then a comment), never with a `size` or a `kind`.
 # `text = "..."` writes the file's bytes as UTF-8 (at most 4096, the small-file reader's limit; its size is theirs),
 # never with a `size`, a `fill` or a `kind`: a pin, a manager's settings file or a pointer a module reads in `finish`.
@@ -600,10 +602,17 @@ The case files:
   size listed set to 10 MB in its `[settings]`. A file under `Library`, in the Trash, in a hidden folder, inside a
   package and below the minimum are never listed; `Public`, a standard folder, cannot be chosen (sandbox mode keeps out
   of `Movies`, `Music` and `Pictures`, which Largest shows as not seen); nothing in the denied `Documents` is seen; a
-  trial cache is its module's and never listed. A disk image, a package (one row), an archive beside its unpacked
-  folder and a folder chosen whole are picked as the screen's tick does and go to the Trash as `core.own-file` (High).
+  trial cache is its module's and never listed. A disk image, a package (one row) and an archive beside its unpacked
+  folder are picked as the screen's tick does and go to the Trash as `core.own-file` (High).
   The list ranks by allocated bytes, so its files are filled with data (12 to 16 MiB); nothing lies in `Downloads` or
   `Desktop`, which other case files' worlds deny in `all`.
+- `largest-folders.toml`: the Largest screen's Folders list (plan 044), on the `trial` module, with the smallest folder
+  at 500 MB and `~/Old-tools` on the ignore list (`[settings]`). A folder with a recent file, an ignored one (even
+  holding a folder the module explains), a folder inside a listed one, a standard folder (`Public`), a small stale one
+  and a folder of old files copied today (`changed` newer than `age`) are never listed; a stale project (a `.git`
+  inside) is listed as a project, and so are the stale folder around a stale one and a stale folder in `Public`. Five
+  files of 520 MB filled with data make it write about 2.6 GB, and the autotest's fake volume grows to hold them
+  (`tree_size`/`filled` in `sandbox_disk`).
 - `uninstall.toml` and `uninstall-open.toml`: the Apps screen, on the `trial` module (plan 036). An app of the system and
   one with Apple's id are not listed; an app Homebrew installed and one owned by the system are listed and never
   offered; a look-alike id's cache beside an uninstalled app stays; Keeper with keep-data moves its bundle, caches,
@@ -846,11 +855,12 @@ items = 1                    # at least 1; the file's expectations of one catego
 part = "explained"           # explained (a positive) | your-folders (a negative)
 at = "home/work/Sample app cache"   # optional: by default the folder of the case's first file
 [case.largest]               # optional, on any case
-shown = "offered"            # offered | absent | withheld | not-seen
+shown = "offered"            # offered | absent | withheld | not-seen | listed | unlisted
 at = "home/VMs/Old.utm"      # optional for offered and absent (by default the case's first file); required otherwise
 kind = "virtual-machine"     # optional, offered only: an ItemKind as serialized
 withheld = "standard-folder" # required for withheld, refused otherwise: a Withheld as serialized
 unpacked = "Photos"          # optional, offered only: the folder the row names beside an archive
+project = true               # optional, listed only: the Folders row is (or is not) a project
 [case.uninstall]             # optional, on any case with a [[case.app]]
 app = "Applications/Keeper.app"   # one of the case's [[case.app]]
 # exactly one of the three forms:
@@ -864,7 +874,12 @@ kept = ["home/Library/Application Support/com.example.Keeper"]   # in place afte
 
 A case's files use the fixture homes' vocabulary (`[[case.file]]`, `[[case.dir]]`, `[[case.symlink]]`,
 `[[case.hardlink]]`, `[[case.marker]]`, with `age` and `fill`, the stated facts `changed`, `accessed`, `owner`, `flags`
-and `kind`, and `[[case.app]]`). A path may start with `private/`: the temporary places. A stated fact goes to
+and `kind`, and `[[case.app]]`). A `changed` of a `[[case.file]]` or `[[case.dir]]` comes with an `age` and is not older
+than it (unless the `age` is a time after the sandbox's). The disk cannot be told a status change (macOS moves it to
+the moment of any write and cannot set it back), so the world's `[[aged]]` lists every folder and file with an `age` and
+no `changed`, and sandbox mode and the autotest read through `StatedTimes` (`crates/sandbox/src/stated_times.rs`, as
+`StatedSpace` wraps the volumes): such an entry is changed at its age, and a stated `changed` wins. A path may start with
+`private/`: the temporary places. A stated fact goes to
 `world.toml`, and `World::read` refuses an `[[entry]]` that states nothing, is not a plain path inside the sandbox, or
 names a path the sandbox does not hold (or holds through a link; the entry itself may be a link, which a
 `[[case.symlink]]`'s `changed` states); `World::stated` gives them at the sandbox's paths.
@@ -959,13 +974,16 @@ and an `uninstalls` section only for a case file with a `[case.uninstall]`.
 `[case.largest]` says what the Largest screen shows at the case's `at` (one of its paths or their folders): `offered`
 is a Files row at `at` that can be chosen, of `kind` and naming `unpacked` beside it when the case says (a folder with
 neither is checked by its row in its folder's Folders view); `absent` is no Files row at or below `at`; `withheld` is
-the Folders row at `at` withheld for `withheld`; `not-seen` is no Files row at or below `at` and the last scan's
-coverage not entering the guarded folder `at` is in. The autotest reads the whole Files list (no filter, every page)
+the Browse row at `at` carrying the `withheld` reason as its note; `not-seen` is no Files row at or below `at` and the
+last scan's coverage not entering the guarded folder `at` is in; `listed` is a row of the Folders list (the folders left
+alone) at `at`, a folder of the case, as a project when `project` says (a positive case may say it with no
+`[case.expect]`: nothing is chosen or cleaned), and `unlisted` is no such row. The autotest reads the whole Files list and the whole Folders list (no filter, every page)
 after the scan and before the cleanup, checks every case, then picks the item of every positive whose category is the
 core's `core.own-file` (`pick_own_item`, as a tick on the screen does), so the cleanup takes the picks through the
 confirmed plan into the sandbox's Trash; the categories a case file is checked against include `core.own-file`. The
 golden report holds a `largest` section (the Files rows: path, kind, offer, allocated bytes, the folder beside; and the
-Folders rows checked) only for a case file with a `[case.largest]`, so no other report changes. `EXPECTED.md` writes
+Browse rows checked, and the Folders list for a file that says `listed` or `unlisted`) only for a case file with a
+`[case.largest]`, so no other report changes. `EXPECTED.md` writes
 one line under the case, with the kind's name and the reason's sentence from the core's dictionary ("On Largest,
 `home/Images/Installer.dmg` is listed as *Disk image* and can be chosen.").
 
@@ -981,7 +999,8 @@ error): the autotest then runs it with High withheld, as a build that withholds 
 
 A case file may also have a file-level `[settings]` table, beside `feature` and `module`: the values of the
 modules' settings, by key `<module>.<name>` in kebab case, each a bool, an integer or a string
-(`"unused-toolchains.node-versions" = true`). A module's off-by-default switch is turned on this way. Like
+(`"unused-toolchains.node-versions" = true`; the one key `core.ignore.paths` takes a list of strings, its `~` the
+sandbox's home). A module's off-by-default switch is turned on this way. Like
 `[[case.running]]` the table is shared by every case of the file. The generator writes it into the sandbox's data
 folder's settings file, in the format the app's store reads, before the app starts (none is written when no file has the
 table), and the autotest runs the engine on it: a key the registered modules do not know or a value of the wrong kind

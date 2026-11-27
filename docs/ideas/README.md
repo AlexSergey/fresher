@@ -60,7 +60,7 @@ One file per idea, `<topic>.md`:
 | [Translations of the interface](./ui-translations.md)                   | 2026-11-19 | agent | the interface in the system language, one file per language from contributors; Russian first                                          |
 | [More kinds of project artifacts](./more-project-kinds.md) | 2026-11-23 | user | stale projects: a marker inside the folder (`CACHEDIR.TAG`, `pyvenv.cfg`), Python and Node tool caches, .NET, PHP, Elixir, Haskell, CMake, Zig, Terraform, game engines (Medium); no user-written delete rules |
 | [AI coding assistants' data](./ai-coding-assistants-data.md)        | 2026-11-26 | user  | old sessions, transcripts and file snapshots of terminal AI assistants; settings and memory never offered |
-| [Big projects left alone](./big-stale-projects.md)                      | 2026-11-26 | user  | a project over 1 GB not changed for months, shown on Largest with Show in Finder only, never offered; taken by plan 044 (draft) |
+| [Big projects left alone](./big-stale-projects.md)                      | 2026-11-26 | user  | a project over 1 GB not changed for months, shown on Largest with Show in Finder only, never offered; taken by plan 044 |
 | [Other users on the Mac](./other-users-on-the-mac.md) | 2026-11-26 | user | other accounts' homes: run Fresher in each today; later an admin's scan through the helper, the owner on every row |
 | [.NET and NuGet packages](./dotnet-nuget-packages.md) | 2026-11-26 | user | NuGet's caches and package versions no project restores, .NET SDKs nothing points at |
 | [Many small places that add up](./many-small-places.md) | 2026-11-26 | user | a checked list of small caches of more tools, added as rows of a module's table |

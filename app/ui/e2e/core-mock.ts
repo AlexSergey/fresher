@@ -8,6 +8,7 @@ import type {
   Event,
   Finding,
   FindingsQuery,
+  FoldersPage,
   MeaningGroup,
   ModuleInfo,
   Overview,
@@ -237,6 +238,7 @@ export type CoreScript = {
   readonly cleanup?: CleanupScript;
   // The build's flags the app info answers; by default `{ high: 'offered', largest: 'shown' }`, what the core can produce.
   readonly flags?: Partial<BuildFlags>;
+  readonly folders?: FoldersPage;
   // The scan streams this many events, then waits for `releaseScan` (or Stop): the live states can be looked at.
   readonly hold?: number;
   // The ignore commands of modules and groups, kept in the tab's session storage (support/ignore-mock.ts).
@@ -244,7 +246,8 @@ export type CoreScript = {
   // The scan streams one event every `interval` ms, as the engine does, each asked of Node as JSON and parsed in the
   // page as the channel does (the page never holds the whole scan); meanwhile `get_overview` answers the totals of the findings streamed so far, and `scanned` from the last event on.
   readonly interval?: number;
-  // The Largest screen's commands: the Files list, the home's folders and the pick of a row (support/largest-mock.ts).
+  // The Largest screen's commands: the Files list, the folders left alone, the home's folders and the pick of a row
+  // (support/largest-mock.ts); `folders` is the list the folders tab answers, `FOLDERS` by default.
   readonly largest?: boolean;
   // The by-meaning groups once the scan ended, in place of the demo volume's; the volume's own lines follow them.
   readonly meaning?: readonly MeaningGroup[];
@@ -702,7 +705,7 @@ export const mockCore = async (page: Page, script: CoreScript = {}): Promise<voi
   if (script.ignoring === true) {
     await mockIgnore(page, findings);
   }
-  const moved = script.largest === true ? await mockLargest(page, findings) : undefined;
+  const moved = script.largest === true ? await mockLargest(page, findings, script.folders) : undefined;
 
   await mockAgreement(page, script.agreement);
 
@@ -755,7 +758,8 @@ const LARGEST_SCREEN_DICTIONARY: Dictionary = {
       ([key]) =>
         key.startsWith('core.access.desktop.') ||
         key.startsWith('core.access.all-files.') ||
-        key === 'core.error.not-own-item',
+        key === 'core.error.not-own-item' ||
+        key === 'core.error.stale-node',
     ),
   ),
 };

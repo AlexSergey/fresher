@@ -158,19 +158,3 @@ shown = "offered"
 at = "home/Archives/Photos.zip"
 kind = "archive"
 unpacked = "Photos"
-
-[[case]]
-name = "a large folder can be chosen whole"
-kind = "positive"
-[[case.file]]
-path = "home/Old projects/site/data.bin"
-size = 12582912
-fill = "data"
-[case.expect]
-item = "home/Old projects"
-category = "core.own-file"
-danger = "high"
-after-cleanup = "in-trash"
-[case.largest]
-shown = "offered"
-at = "home/Old projects"

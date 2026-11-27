@@ -56,6 +56,9 @@ pub struct World {
     receipts: Vec<(String, u64)>,
     /// The stated facts, by path relative to the sandbox, in the order of the case files.
     entries: Vec<(PathBuf, Stated)>,
+    /// The folders and files that state an `age` and no `changed`, by path relative to the sandbox, with the time of
+    /// that age: where their status change is read (`StatedTimes`), as the disk cannot be told one.
+    aged: Vec<(PathBuf, Timestamp)>,
     /// The calls of programs the case files answer, each once, in the order of the files and their cases.
     tools: Vec<StatedTool>,
     /// The volume a demo world states it is on; `None` leaves the Mac's.
@@ -75,6 +78,7 @@ impl Default for World {
             macos: None,
             receipts: Vec::new(),
             entries: Vec::new(),
+            aged: Vec::new(),
             tools: Vec::new(),
             volume: None,
         }
@@ -101,6 +105,8 @@ struct RawWorld {
     receipts: Vec<RawReceipt>,
     #[serde(default, rename = "entry", skip_serializing_if = "Vec::is_empty")]
     entries: Vec<RawEntry>,
+    #[serde(default, rename = "aged", skip_serializing_if = "Vec::is_empty")]
+    aged: Vec<RawAged>,
     #[serde(default, rename = "tool", skip_serializing_if = "Vec::is_empty")]
     tools: Vec<RawTool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -125,6 +131,14 @@ struct RawTool {
 struct RawReceipt {
     package: String,
     installed: u64,
+}
+
+/// An `[[aged]]`: a path of the sandbox and the moment of its status change, in seconds since the Unix epoch.
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct RawAged {
+    path: PathBuf,
+    changed: u64,
 }
 
 /// An `[[entry]]`: a path of the sandbox and the facts it states, its times in seconds since the Unix epoch.
@@ -186,6 +200,7 @@ impl World {
     pub fn of(files: &[CaseFile], now: SystemTime) -> Result<Self, SandboxError> {
         let mut running = Vec::new();
         let mut entries = Vec::new();
+        let mut aged = Vec::new();
         let mut elsewhere = Vec::new();
         let mut spotlight_on = true;
         let mut access: BTreeMap<Capability, Access> = BTreeMap::new();
@@ -225,6 +240,7 @@ impl World {
             }
             let first = entries.len();
             entries.extend(case.tree().stated(now).map_err(|source| SandboxError::Tree { source })?);
+            aged.extend(case.tree().aged(now).map_err(|source| SandboxError::Tree { source })?);
             if as_declared {
                 state_allocated(&mut entries, first, case.tree().sparse_files());
             }
@@ -237,7 +253,7 @@ impl World {
         }
         let now = now.duration_since(SystemTime::UNIX_EPOCH).ok().map(|since| since.as_secs());
         let access = access.into_iter().collect();
-        Ok(Self { now, running, spotlight_on, elsewhere, access, macos, receipts, entries, tools, volume })
+        Ok(Self { now, running, spotlight_on, elsewhere, access, macos, receipts, entries, aged, tools, volume })
     }
 
     /// The world of `sandbox`, read from its `world.toml`, through no link; a missing file is an empty world. Anything
@@ -261,8 +277,11 @@ impl World {
         }
         let text = fs::read_to_string(&path).map_err(io)?;
         let world = Self::parse(&text).map_err(|reason| SandboxError::World { path: path.clone(), reason })?;
-        if let Some(entry) = world.entries.iter().find(|(entry, _)| !holds(sandbox.path(), entry)) {
-            let reason = format!("it states facts of `{}`, which the sandbox does not hold", entry.0.display());
+        let stated = world.entries.iter().map(|(entry, _)| entry);
+        if let Some(entry) =
+            stated.chain(world.aged.iter().map(|(entry, _)| entry)).find(|entry| !holds(sandbox.path(), entry))
+        {
+            let reason = format!("it states facts of `{}`, which the sandbox does not hold", entry.display());
             return Err(SandboxError::World { path, reason });
         }
         Ok(world)
@@ -377,6 +396,18 @@ impl World {
         StatedFacts::under(sandbox, self.entries.iter().map(|(path, stated)| (path.as_path(), stated)))
     }
 
+    /// The status changes of the aged folders and files, at their paths below `sandbox` (the canonical sandbox
+    /// folder): what sandbox mode's reader reports for them unless an entry states its own (`StatedTimes`).
+    pub fn aged(&self, sandbox: &Path) -> StatedFacts {
+        let aged =
+            self.aged.iter().map(|(path, changed)| (path, Stated { changed: Some(*changed), ..Stated::default() }));
+        let mut facts = StatedFacts::new();
+        for (path, stated) in aged {
+            facts.insert(sandbox.join(path), stated);
+        }
+        facts
+    }
+
     /// Whether the world states what any program answers.
     pub fn declares_tools(&self) -> bool {
         !self.tools.is_empty()
@@ -419,6 +450,8 @@ impl World {
                 installed_by: stated.installed_by.as_ref().map(installed_by_text),
             })
             .collect();
+        let aged =
+            self.aged.iter().map(|(path, changed)| RawAged { path: path.clone(), changed: changed.secs() }).collect();
         let elsewhere = self
             .elsewhere
             .iter()
@@ -455,6 +488,7 @@ impl World {
             elsewhere,
             receipts,
             entries,
+            aged,
             tools,
             volume: self.volume.as_ref().map(DemoVolume::to_raw),
         })
@@ -503,6 +537,12 @@ impl World {
                  # `allocated` is the space a sparse file of a demo world takes on disk: its declared size.\n"
             }
         };
+        let aged = if self.aged.is_empty() {
+            ""
+        } else {
+            "# Each [[aged]] is the status change of a path whose case states an age (the disk cannot be told one: a\n\
+             # write moves it to now); an [[entry]] that states its own wins.\n"
+        };
         let volume = if self.volume.is_some() {
             "# [volume] is the volume's space the app answers for every path in sandbox mode, in bytes.\n"
         } else {
@@ -516,7 +556,7 @@ impl World {
         };
         format!(
             "# The moment the sandbox was generated and the running apps the app sees in sandbox mode, written by the\n\
-             # generator from the case files.\n{spotlight}{access}{installs}{facts}{tools}{volume}"
+             # generator from the case files.\n{spotlight}{access}{installs}{facts}{aged}{tools}{volume}"
         )
     }
 
@@ -538,6 +578,16 @@ impl World {
             })
             .collect::<Result<_, String>>()?;
         let entries = raw.entries.into_iter().map(stated_entry).collect::<Result<_, String>>()?;
+        let aged = raw
+            .aged
+            .into_iter()
+            .map(|entry| {
+                if !is_plain(&entry.path) {
+                    return Err(format!("the aged `{}` is not a plain path inside the sandbox", entry.path.display()));
+                }
+                Ok((entry.path, Timestamp::from_secs(entry.changed)))
+            })
+            .collect::<Result<_, String>>()?;
         let elsewhere = raw
             .elsewhere
             .into_iter()
@@ -595,7 +645,19 @@ impl World {
             .volume
             .map(|volume| DemoVolume::from_raw(volume).map_err(|reason| format!("[volume]: {reason}")))
             .transpose()?;
-        Ok(Self { now: raw.now, running, spotlight_on, elsewhere, access, macos, receipts, entries, tools, volume })
+        Ok(Self {
+            now: raw.now,
+            running,
+            spotlight_on,
+            elsewhere,
+            access,
+            macos,
+            receipts,
+            entries,
+            aged,
+            tools,
+            volume,
+        })
     }
 }
 
@@ -1494,8 +1556,7 @@ mod tests {
 
         #[test]
         fn the_world_holds_the_stated_facts_and_reads_them_back() {
-            let facts =
-                "owner = \"system\"\nchanged = \"30d\"\naccessed = \"-1h\"\nflags = [\"restricted\", \"user-lock\"]\n";
+            let facts = "owner = \"system\"\nage = \"60d\"\nchanged = \"30d\"\naccessed = \"-1h\"\nflags = [\"restricted\", \"user-lock\"]\n";
             let file =
                 case_file("facts", &format!("[[case.file]]\npath = \"private/tmp/sock\"\nkind = \"pipe\"\n{facts}"));
             let (_folder, sandbox) = generated(std::slice::from_ref(&file));
@@ -1550,8 +1611,11 @@ mod tests {
         #[test]
         fn two_case_files_join_their_stated_facts() {
             let first = case_file("first", "owner = \"other-user\"\n");
-            let second =
-                case_file("second", "[[case.dir]]\npath = \"private/var/folders/xx/sandbox/T/d\"\nchanged = \"2h\"\n");
+            let second = case_file(
+                "second",
+                "[[case.dir]]\npath = \"private/var/folders/xx/sandbox/T/d\"\nage = \"1d\"\n\
+                 changed = \"2h\"\n",
+            );
             let (_folder, sandbox) = generated(&[first, second]);
 
             let stated = World::read(&sandbox).unwrap().stated(sandbox.path());
@@ -1560,6 +1624,39 @@ mod tests {
             assert_eq!(stated.get(&sandbox.path().join("home/first.bin")).unwrap().owner, Some(StatedOwner::OtherUser));
             let folder = stated.get(&sandbox.path().join("private/var/folders/xx/sandbox/T/d")).unwrap();
             assert_eq!(folder.changed, Some(Timestamp::from_secs(FIXTURE_NOW - 7_200)));
+        }
+
+        #[test]
+        fn an_aged_path_is_changed_at_its_age_and_reads_back() {
+            let aged = "[[case.dir]]\npath = \"home/Code\"\nage = \"400d\"\n[[case.file]]\npath = \"home/Code/a.bin\"\n\
+                        age = \"30d\"\n[[case.file]]\npath = \"home/new.bin\"\n";
+            let file = case_file("aged", aged);
+            let (_folder, sandbox) = generated(std::slice::from_ref(&file));
+
+            let world = World::read(&sandbox).unwrap();
+
+            assert_eq!(world, World::of(&[file], super::now()).unwrap());
+            let aged = world.aged(sandbox.path());
+            assert_eq!(aged.len(), 2);
+            let changed = |path: &str| aged.get(&sandbox.path().join(path)).unwrap().changed;
+            assert_eq!(changed("home/Code"), Some(Timestamp::from_secs(FIXTURE_NOW - 400 * 86_400)));
+            assert_eq!(changed("home/Code/a.bin"), Some(Timestamp::from_secs(FIXTURE_NOW - 30 * 86_400)));
+            let text = fs::read_to_string(sandbox.world()).unwrap();
+            assert!(text.contains("[[aged]]\npath = \"home/Code\"\n"), "{text}");
+        }
+
+        #[test]
+        fn a_stated_changed_wins_over_the_age() {
+            let stated = "[[case.file]]\npath = \"home/Restored/a.bin\"\nage = \"400d\"\nchanged = \"1d\"\n";
+            let file = case_file("restored", stated);
+            let (_folder, sandbox) = generated(std::slice::from_ref(&file));
+
+            let world = World::read(&sandbox).unwrap();
+
+            assert_eq!(world.aged(sandbox.path()).len(), 0);
+            let stated = world.stated(sandbox.path());
+            let changed = stated.get(&sandbox.path().join("home/Restored/a.bin")).unwrap().changed;
+            assert_eq!(changed, Some(Timestamp::from_secs(FIXTURE_NOW - 86_400)));
         }
 
         #[test]

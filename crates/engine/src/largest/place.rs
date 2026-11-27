@@ -1,4 +1,5 @@
-//! The Folders page: the place view of one folder of the home, with the way back to the home and a judgement per row.
+//! The Browse page: the read-only place view of one folder of the home, with the way back to the home and a judgement
+//! per row.
 
 use std::path::PathBuf;
 
@@ -8,7 +9,7 @@ use crate::largest::Ground;
 use crate::storage::place::place_view;
 
 /// The page of `limit` rows from `offset` of `folder`, a folder of the home that opens (the home itself always does),
-/// without the picks a cleanup removed. `StaleNode` for a node not in the state, `NotOwnItem` for a folder outside the
+/// without the rows a cleanup removed. `StaleNode` for a node not in the state, `NotOwnItem` for a folder outside the
 /// home, one that does not open or one a cleanup removed.
 pub(crate) fn own_place(
     ground: &Ground<'_>,
@@ -42,7 +43,6 @@ pub(crate) fn own_place(
                 explained: row.explained,
                 offer,
                 opens,
-                picked: ground.picked(&path),
                 node: row.node,
             })
         })

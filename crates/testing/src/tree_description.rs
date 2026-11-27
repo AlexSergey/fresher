@@ -16,8 +16,8 @@ use crate::fixture_tree::{FixtureError, write_marker};
 /// never depends on the wall clock.
 pub const FIXTURE_NOW: u64 = 1_767_225_600;
 
-const MAX_FILLED_FILE: u64 = 64 * 1024 * 1024;
-const MAX_FILLED_TREE: u64 = 512 * 1024 * 1024;
+const MAX_FILLED_FILE: u64 = 1024 * 1024 * 1024;
+const MAX_FILLED_TREE: u64 = 4 * 1024 * 1024 * 1024;
 const FILL_SEED: u64 = 0x9E37_79B9_7F4A_7C15;
 /// What a valid `CACHEDIR.TAG` holds: the standard's signature line, then a comment. The large trees write it too.
 pub(crate) const CACHEDIR_TAG_CONTENT: &[u8] =
@@ -245,6 +245,33 @@ impl TreeDescription {
             }
         }
         Ok(stated)
+    }
+
+    /// The bytes of real data the tree writes: its filled files, the written heads of its sparse ones and its texts.
+    pub fn filled_bytes(&self) -> u64 {
+        self.files
+            .iter()
+            .map(|file| {
+                let data = if file.fill == Some(Fill::Data) { file.size } else { 0 };
+                data.saturating_add(file.written.unwrap_or(0))
+                    .saturating_add(file.text.as_ref().map_or(0, |text| text.len() as u64))
+            })
+            .fold(0, u64::saturating_add)
+    }
+
+    /// The folders and files that state an `age` and no `changed`, with the time of that age counted back from `now`,
+    /// relative to the root as written: what a reader that cannot be told a status change reports for them.
+    pub fn aged(&self, now: SystemTime) -> Result<Vec<(PathBuf, Timestamp)>, FixtureError> {
+        let dirs = self.dirs.iter().map(|dir| (&dir.path, dir.age.as_deref(), dir.changed.is_some()));
+        let files = self.files.iter().map(|file| (&file.path, file.age.as_deref(), file.changed.is_some()));
+        let mut aged = Vec::new();
+        for (path, age, changed) in dirs.chain(files) {
+            if let (Some(age), false) = (age, changed) {
+                let time = time_at_age(age, now).ok_or_else(|| FixtureError::InvalidAge { path: path.clone() })?;
+                aged.push((path.clone(), Timestamp::from_system_time(time)));
+            }
+        }
+        Ok(aged)
     }
 
     /// Builds the tree inside the existing `folder`; an `age` is counted back from `now`.
@@ -694,6 +721,17 @@ mod tests {
         }
 
         #[test]
+        fn an_entry_with_a_stated_change_or_no_age_is_not_aged() {
+            let tree = parse(
+                "[[file]]\npath = \"a\"\nage = \"3d\"\nchanged = \"1d\"\n[[file]]\npath = \"b\"\nsize = 1\n\
+                 [[dir]]\npath = \"c\"\n[[symlink]]\npath = \"d\"\ntarget = \"a\"\nage = \"3d\"\n",
+            )
+            .unwrap();
+
+            assert_eq!(tree.aged(SystemTime::UNIX_EPOCH + std::time::Duration::from_hours(100)).unwrap(), []);
+        }
+
+        #[test]
         fn a_folders_age_and_modified_together_are_refused() {
             let error = parse("[[dir]]\npath = \"a\"\nage = \"1d\"\nmodified = 5\n").unwrap_err();
 
@@ -728,10 +766,10 @@ mod tests {
 
         #[test]
         fn a_fill_over_the_cap_is_refused() {
-            let one = "[[file]]\npath = \"a\"\nsize = 67108865\nfill = \"data\"\n";
+            let one = "[[file]]\npath = \"a\"\nsize = 1073741825\nfill = \"data\"\n";
             let mut many = String::new();
-            for n in 0..9 {
-                writeln!(many, "[[file]]\npath = \"f{n}\"\nsize = 67108864\nfill = \"data\"").unwrap();
+            for n in 0..5 {
+                writeln!(many, "[[file]]\npath = \"f{n}\"\nsize = 1073741824\nfill = \"data\"").unwrap();
             }
             for text in [one.to_string(), many] {
                 assert!(matches!(parse(&text).unwrap_err(), FixtureError::FillOverCap { .. }));
@@ -765,10 +803,10 @@ mod tests {
 
         #[test]
         fn written_over_the_fill_cap_is_refused() {
-            let one = "[[file]]\npath = \"a\"\nsize = 10737418240\nwritten = 67108865\n".to_owned();
+            let one = "[[file]]\npath = \"a\"\nsize = 10737418240\nwritten = 1073741825\n".to_owned();
             let mut many = String::new();
-            for n in 0..9 {
-                writeln!(many, "[[file]]\npath = \"f{n}\"\nsize = 10737418240\nwritten = 67108864").unwrap();
+            for n in 0..5 {
+                writeln!(many, "[[file]]\npath = \"f{n}\"\nsize = 10737418240\nwritten = 1073741824").unwrap();
             }
             for text in [one, many] {
                 assert!(matches!(parse(&text).unwrap_err(), FixtureError::FillOverCap { .. }));
@@ -954,6 +992,21 @@ mod tests {
             let modified = |name: &str| std::fs::metadata(folder.path().join(name)).unwrap().modified().unwrap();
             assert_eq!(modified("s"), now() - Duration::from_secs(90));
             assert_eq!(modified("later"), now() + Duration::from_hours(48));
+        }
+
+        #[test]
+        fn the_aged_folders_and_files_are_listed_at_their_age() {
+            let text = "[[dir]]\npath = \"d\"\nage = \"2d\"\n[[file]]\npath = \"d/f\"\nage = \"30d\"\n";
+            let tree = TreeDescription::from_toml_str(text).unwrap();
+
+            let at = |back: Duration| Timestamp::from_system_time(now() - back);
+            assert_eq!(
+                tree.aged(now()).unwrap(),
+                [
+                    (PathBuf::from("d"), at(Duration::from_hours(48))),
+                    (PathBuf::from("d/f"), at(Duration::from_hours(720))),
+                ]
+            );
         }
 
         #[test]

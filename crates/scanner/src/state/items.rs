@@ -39,7 +39,7 @@ pub(super) fn items(tree: &Tree, root: NodeIndex, rule: &dyn ItemRule, min: u64,
 
 /// Whether the query may look at `node` at all: unclaimed, not a link, a special entry or a hard link counted
 /// elsewhere, and at least `min`.
-const fn offered(node: &Node, min: u64) -> bool {
+pub(super) const fn offered(node: &Node, min: u64) -> bool {
     node.owner == Node::NO_OWNER
         && !node.flags.has(Flag::Link)
         && !node.flags.has(Flag::Special)

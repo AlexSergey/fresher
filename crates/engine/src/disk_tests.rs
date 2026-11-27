@@ -4,8 +4,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use fresher_core::{
-    ByteSize, CategoryId, ChildOrder, DiskState, ItemRule, NodeId, NodeInfo, NodeKind, NodePage, Sizes, StateId,
-    Timestamp, UnreadablePlace,
+    ByteSize, CategoryId, ChildOrder, DiskState, ItemRule, LeftAlone, NodeId, NodeInfo, NodeKind, NodePage, Sizes,
+    StateId, Timestamp, UnreadablePlace,
 };
 use fresher_testing::FixedDiskState;
 
@@ -108,6 +108,16 @@ impl DiskState for SlowState {
 
     fn items(&self, root: NodeId, rule: &dyn ItemRule, min: ByteSize, limit: u32) -> Option<Vec<NodeId>> {
         self.inner.items(root, rule, min, limit)
+    }
+
+    fn left_alone(
+        &self,
+        root: NodeId,
+        rule: &dyn ItemRule,
+        min: ByteSize,
+        before: Timestamp,
+    ) -> Option<Vec<LeftAlone>> {
+        self.inner.left_alone(root, rule, min, before)
     }
 }
 

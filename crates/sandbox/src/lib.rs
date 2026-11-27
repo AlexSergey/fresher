@@ -23,6 +23,7 @@ mod paced_walk;
 mod scenario;
 mod stated_access;
 mod stated_space;
+mod stated_times;
 mod uninstall;
 mod world;
 
@@ -42,5 +43,6 @@ pub use scenario::{
 };
 pub use stated_access::StatedAccess;
 pub use stated_space::StatedSpace;
+pub use stated_times::StatedTimes;
 pub use uninstall::{Uninstall, UninstallExpectation};
 pub use world::{World, WorldCommands};

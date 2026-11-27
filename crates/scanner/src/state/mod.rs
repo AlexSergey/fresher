@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use fresher_core::{
-    ByteSize, CategoryId, ChildOrder, Completeness, DiskState, ItemRule, NodeId, NodeInfo, NodeKind, NodePage,
-    NotScanned, Sizes, StateId, Timestamp, UnreadablePlace,
+    ByteSize, CategoryId, ChildOrder, Completeness, DiskState, ItemRule, LeftAlone, NodeId, NodeInfo, NodeKind,
+    NodePage, NotScanned, Sizes, StateId, Timestamp, UnreadablePlace,
 };
 
 use crate::state::search::Lowered;
@@ -14,6 +14,7 @@ use crate::tree::node::{Flag, Node, NodeIndex};
 
 mod items;
 mod largest;
+mod left_alone;
 mod search;
 
 /// The read-only tree of one committed scan. Never changes: a new scan commits a new state.
@@ -209,6 +210,26 @@ impl DiskState for TreeState {
         let root = self.index(root)?;
         let found = items::items(&self.tree, root, rule, min.bytes(), limit);
         Some(found.into_iter().filter_map(|index| self.id_of(index)).collect())
+    }
+
+    fn left_alone(
+        &self,
+        root: NodeId,
+        rule: &dyn ItemRule,
+        min: ByteSize,
+        before: Timestamp,
+    ) -> Option<Vec<LeftAlone>> {
+        let root = self.index(root)?;
+        let before = crate::tree::node::time_bits(Some(before));
+        let found = left_alone::left_alone(&self.tree, root, rule, min.bytes(), before);
+        Some(
+            found
+                .into_iter()
+                .filter_map(|(index, newest)| {
+                    Some(LeftAlone { folder: self.id_of(index)?, newest: crate::tree::node::time_of(newest)? })
+                })
+                .collect(),
+        )
     }
 }
 

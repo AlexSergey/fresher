@@ -31,6 +31,8 @@ const COMMANDS: &[&str] = &[
     "get_largest",
     "get_largest_place",
     "pick_own_item",
+    "get_largest_folders",
+    "reveal_node",
     "get_apps",
     "get_app",
     "reveal_app",

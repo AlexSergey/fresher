@@ -15,7 +15,7 @@ use crate::matcher::state::TrieState;
 use crate::tree::TreeError;
 use crate::tree::arena::Tree;
 use crate::tree::fold::SharedFile;
-use crate::tree::node::{Flag, Held, Hit, NodeIndex, Sums, masked};
+use crate::tree::node::{Flag, Held, Hit, NodeIndex, Sums, masked, time_bits};
 use crate::tree::times::Times;
 use crate::walk::boundary::Decision;
 use crate::walk::errors::unreadable;
@@ -301,6 +301,9 @@ impl<'a> Aggregator<'a> {
     fn finish_opaque(&mut self, root: NodeIndex) -> Result<(), TreeError> {
         let Some(totals) = self.opaque.remove(&root) else { return Ok(()) };
         self.tree.apply_opaque(root, totals.sums, totals.folders, &totals.shared)?;
+        // What changed inside counts for the folder's newest change. The inside may also hold the times of the
+        // subfolders: that errs toward recent, the safe direction.
+        self.tree.join_newest(root, time_bits(totals.inside.newest_change))?;
         let mut inside = totals.inside;
         inside.join_change(self.tree.node(root).and_then(crate::tree::node::Node::modified));
         inside.join_change(self.tree.stamp(root).times.changed);

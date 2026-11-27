@@ -1,0 +1,288 @@
+{
+  "cleanup": {
+    "items": [],
+    "leftOut": []
+  },
+  "findings": [],
+  "largest": {
+    "files": [
+      {
+        "allocated": 520003584,
+        "kind": "file",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/Archive/2019/photos.bin",
+        "unpacked": null
+      },
+      {
+        "allocated": 520003584,
+        "kind": "file",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/Code/old-app/data.bin",
+        "unpacked": null
+      },
+      {
+        "allocated": 520003584,
+        "kind": "file",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/Public/old-export/export.bin",
+        "unpacked": null
+      },
+      {
+        "allocated": 520003584,
+        "kind": "file",
+        "offer": {
+          "kind": "offered"
+        },
+        "path": "home/Restored/photos.bin",
+        "unpacked": null
+      }
+    ],
+    "folders": [
+      {
+        "path": "home/Archive",
+        "project": false
+      },
+      {
+        "path": "home/Code/old-app",
+        "project": true
+      },
+      {
+        "path": "home/Public/old-export",
+        "project": false
+      }
+    ],
+    "places": []
+  },
+  "map": {
+    "places": [],
+    "volumes": [
+      {
+        "capacity": 2948143616,
+        "name": "Sandbox",
+        "parts": [
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "explained"
+            }
+          },
+          {
+            "allocated": 2612621312,
+            "part": {
+              "kind": "your-folders"
+            }
+          },
+          {
+            "allocated": 67086848,
+            "part": {
+              "kind": "remainder",
+              "outsideScan": true,
+              "reasons": [
+                {
+                  "kind": "snapshots-and-bookkeeping"
+                },
+                {
+                  "kind": "changed-during-scan"
+                }
+              ]
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "mac-os"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "swap-and-sleep"
+            }
+          },
+          {
+            "allocated": 0,
+            "part": {
+              "kind": "disk-own"
+            }
+          },
+          {
+            "allocated": 268435456,
+            "part": {
+              "kind": "free"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "trash": {
+    "after": [],
+    "before": []
+  },
+  "treeAfter": {
+    "entries": [
+      {
+        "kind": "file",
+        "logical_size": 116,
+        "path": ".fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "Applications"
+      },
+      {
+        "kind": "file",
+        "logical_size": 0,
+        "path": "EXPECTED.md"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "System/Applications"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/.Trash"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Archive"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Archive/2019"
+      },
+      {
+        "kind": "file",
+        "logical_size": 520000000,
+        "path": "home/Archive/2019/photos.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Archive/notes.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/new-app"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/new-app/main.rs"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-app"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Code/old-app/.git"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Code/old-app/.git/HEAD"
+      },
+      {
+        "kind": "file",
+        "logical_size": 520000000,
+        "path": "home/Code/old-app/data.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Old-tools"
+      },
+      {
+        "kind": "file",
+        "logical_size": 83,
+        "path": "home/Old-tools/.fresher-sandbox"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Old-tools/Sample app cache"
+      },
+      {
+        "kind": "file",
+        "logical_size": 520000000,
+        "path": "home/Old-tools/Sample app cache/blob.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Public"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Public/old-export"
+      },
+      {
+        "kind": "file",
+        "logical_size": 520000000,
+        "path": "home/Public/old-export/export.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 4096,
+        "path": "home/Public/readme.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Restored"
+      },
+      {
+        "kind": "file",
+        "logical_size": 520000000,
+        "path": "home/Restored/photos.bin"
+      },
+      {
+        "kind": "dir",
+        "logical_size": 0,
+        "path": "home/Small"
+      },
+      {
+        "kind": "file",
+        "logical_size": 12582912,
+        "path": "home/Small/notes.bin"
+      },
+      {
+        "kind": "file",
+        "logical_size": 1097,
+        "path": "world.toml"
+      }
+    ],
+    "totalLogicalSize": 2612600592
+  }
+}

@@ -1,6 +1,6 @@
 import { type JSX, useState } from 'react';
 
-import type { ItemKind, LargestPage, NodeId, Unchanged } from '../../ipc/bindings.generated';
+import type { FoldersPage, ItemKind, LargestPage, NodeId, Unchanged } from '../../ipc/bindings.generated';
 
 import { PageHeader } from '../../design/layout/page-header/page-header';
 import { Surface } from '../../design/layout/surface/surface';
@@ -17,21 +17,24 @@ import { summarize } from '../../state/selection-summary';
 import { useCore, useCoreStore } from '../../state/store';
 import { CoverageNotices } from '../permission/coverage-notices';
 import { useScanActions } from '../use-scan-actions';
-import { FoldersView } from './folders-view';
+import { BrowseView } from './browse-view';
+import { FoldersList } from './folders-list';
 import styles from './largest-screen.module.css';
 import { type LargestFilter, NO_FILTER, useLargest } from './use-largest';
+import { useLargestFolders } from './use-largest-folders';
 import { type OwnPick, useOwnPick } from './use-own-pick';
 
 type FilesProps = {
+  readonly failed: boolean;
   readonly filter: LargestFilter;
   readonly more: () => void;
   readonly onFilter: (filter: LargestFilter) => void;
   readonly outOfDate: boolean;
-  readonly page: LargestPage;
+  readonly page: LargestPage | null;
   readonly pick: OwnPick;
 };
 
-type View = 'files' | 'folders';
+type View = 'browse' | 'files' | 'folders';
 
 const UNCHANGED: readonly Unchanged[] = ['any', 'month', 'half-year', 'year', 'two-years'];
 
@@ -105,8 +108,15 @@ const Filters = ({
   );
 };
 
-// The Files list: the filters, the rows as the core sent them, what is left out of it, and Show more while rows remain.
-const Files = ({ filter, more, onFilter, outOfDate, page, pick }: FilesProps): JSX.Element => (
+// The rows of a page that answered: the filters, the rows, what is left out of the list and Show more.
+const Rows = ({
+  filter,
+  more,
+  onFilter,
+  outOfDate,
+  page,
+  pick,
+}: Omit<FilesProps, 'failed' | 'page'> & { readonly page: LargestPage }): JSX.Element => (
   <>
     <Filters filter={filter} onFilter={onFilter} page={page} />
     {outOfDate ? <p className={styles.note}>{t('ui.screen.largest.changed')}</p> : null}
@@ -139,9 +149,22 @@ const Files = ({ filter, more, onFilter, outOfDate, page, pick }: FilesProps): J
   </>
 );
 
+// The Files list: the rows as the core sent them once a page answered; until then, the filters over "Reading the
+// list." or "The list could not be read.".
+const Files = ({ failed, filter, more, onFilter, outOfDate, page, pick }: FilesProps): JSX.Element =>
+  failed || page === null ? (
+    <>
+      <Filters filter={filter} onFilter={onFilter} page={null} />
+      <p className={styles.state}>{t(failed ? 'ui.screen.largest.unavailable' : 'ui.screen.largest.loading')}</p>
+    </>
+  ) : (
+    <Rows filter={filter} more={more} onFilter={onFilter} outOfDate={outOfDate} page={page} pick={pick} />
+  );
+
 // "Where did my space go, file by file?": the largest files and folders of the last scan, largest first, with what
 // the core says of each. Ticking an offered row asks the core to pick it and puts the finding in the selection;
-// nothing is ticked when the screen opens and there is no Select all.
+// nothing is ticked when the screen opens and there is no Select all. Folders lists the folders left alone, to open in
+// the Finder; Browse goes through the home's folders.
 export const LargestScreen = (): JSX.Element => {
   const store = useCoreStore();
   const navigation = useNavigation();
@@ -150,10 +173,11 @@ export const LargestScreen = (): JSX.Element => {
   const [filter, setFilter] = useState<LargestFilter>(NO_FILTER);
   const [folder, setFolder] = useState<NodeId | null>(null);
   const { failed, more, page } = useLargest(filter);
+  const folders = useLargestFolders();
   const scanId = useCore((state) => state.overview?.lastScan?.scan ?? null);
   const [seenScan, setSeenScan] = useState(scanId);
 
-  // The folders of an older scan are not the new scan's: both views start again from the home.
+  // The folders of an older scan are not the new scan's: Files' place and Browse start again from the home.
   if (seenScan !== scanId) {
     setSeenScan(scanId);
     setFilter((now) => (now.place === null ? now : { ...now, place: null }));
@@ -167,7 +191,13 @@ export const LargestScreen = (): JSX.Element => {
   const scanning = useCore((state) => state.status.state === 'scanning');
   const outOfDate = useCore((state) => state.overview?.lastScan?.changedSince !== undefined);
 
-  const summary = page === null || page.total === 0 ? {} : { subtitle: summaryOf(page) };
+  const subtitles: Readonly<Record<View, null | string>> = {
+    browse: null,
+    files: filesSummary(page),
+    folders: foldersSummary(folders.page),
+  };
+  const subtitle = subtitles[view];
+  const summary = subtitle === null ? {} : { subtitle };
 
   return (
     <>
@@ -191,23 +221,24 @@ export const LargestScreen = (): JSX.Element => {
             tabs={[
               { label: t('ui.screen.largest.view.files'), value: 'files' },
               { label: t('ui.screen.largest.view.folders'), value: 'folders' },
+              { label: t('ui.screen.largest.view.browse'), value: 'browse' },
             ]}
             value={view}
           >
             {view === 'folders' ? (
-              <FoldersView folder={folder} onFolder={setFolder} pick={pick} />
-            ) : failed ? (
-              <>
-                <Filters filter={filter} onFilter={setFilter} page={null} />
-                <p className={styles.state}>{t('ui.screen.largest.unavailable')}</p>
-              </>
-            ) : page === null ? (
-              <>
-                <Filters filter={filter} onFilter={setFilter} page={null} />
-                <p className={styles.state}>{t('ui.screen.largest.loading')}</p>
-              </>
+              <FoldersList folders={folders} />
+            ) : view === 'browse' ? (
+              <BrowseView folder={folder} onFolder={setFolder} />
             ) : (
-              <Files filter={filter} more={more} onFilter={setFilter} outOfDate={outOfDate} page={page} pick={pick} />
+              <Files
+                failed={failed}
+                filter={filter}
+                more={more}
+                onFilter={setFilter}
+                outOfDate={outOfDate}
+                page={page}
+                pick={pick}
+              />
             )}
           </Tabs>
         )}
@@ -225,8 +256,20 @@ export const LargestScreen = (): JSX.Element => {
   );
 };
 
-const summaryOf = (page: LargestPage): string =>
-  t('ui.screen.largest.summary', {
-    count: { kind: 'count', value: page.total },
-    size: { kind: 'size', value: page.sizes.allocated },
-  });
+// The page's subtitle on Files: how many items the list holds and their size; none for an empty list.
+const filesSummary = (page: LargestPage | null): null | string =>
+  page === null || page.total === 0
+    ? null
+    : t('ui.screen.largest.summary', {
+        count: { kind: 'count', value: page.total },
+        size: { kind: 'size', value: page.sizes.allocated },
+      });
+
+// The page's subtitle on Folders: how many folders were left alone and their size; none for an empty list.
+const foldersSummary = (page: FoldersPage | null): null | string =>
+  page === null || page.total === 0
+    ? null
+    : t('ui.screen.largest.folders.summary', {
+        count: { kind: 'count', value: page.total },
+        size: { kind: 'size', value: page.sizes.allocated },
+      });

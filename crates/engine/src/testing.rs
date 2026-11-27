@@ -14,9 +14,10 @@ use fresher_core::{
     DiskSpace, DiskState, DiskWalk, Ended, EntryFacts, EntryKind, Event, Finding, FindingSink, FullScanReason,
     Interest, ItemDone, LeftOutItem, Locales, Match, Module, ModuleChoice, ModuleContext, ModuleDescriptor,
     ModuleError, ModuleGroup, ModuleId, Need, NewFinding, Parts, Pattern, PlaceSeen, PlanItem, Protection,
-    PutBackOutcome, ReadError, Rehearsal, Removal, ScanKind, SettingsStore, Sizes, StateId, StoreError, StoredSettings,
-    Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand, ToolId, TrashState, TrashedItem, Unreadable,
-    VolumeFacts, Volumes, WalkError, WalkMode, WalkProgress, WalkRequest, WalkSummary,
+    PutBackOutcome, ReadError, Rehearsal, Removal, ScanKind, SettingDescriptor, SettingsStore, Sizes, StateId,
+    StoreError, StoredSettings, Subject, Subtree, SubtreeQuery, Text, TextKey, Timestamp, ToolCommand, ToolId,
+    TrashState, TrashedItem, Unreadable, VolumeFacts, Volumes, WalkError, WalkMode, WalkProgress, WalkRequest,
+    WalkSummary,
 };
 use fresher_testing::{
     FakeAccess, FakeCleaner, FakeClock, FakeCommandRunner, FakeFinderSettings, FakeSystemUi, FakeVolumes,
@@ -60,6 +61,7 @@ pub(crate) struct TestModuleBuilder {
     tool_checks: Vec<ToolCommand>,
     problems: Vec<TextKey>,
     kept: Vec<TextKey>,
+    days: Vec<SettingDescriptor>,
     locales: &'static str,
     interests: Vec<Interest>,
     on_match: OnMatch,
@@ -80,6 +82,7 @@ impl TestModule {
             tool_checks: Vec::new(),
             problems: Vec::new(),
             kept: Vec::new(),
+            days: Vec::new(),
             locales: "{}",
             interests: Vec::new(),
             on_match: OnMatch::Find,
@@ -93,6 +96,12 @@ impl TestModule {
 impl TestModuleBuilder {
     pub(crate) const fn group(mut self, group: ModuleGroup) -> Self {
         self.group = group;
+        self
+    }
+
+    /// The stale projects' days setting, declared by this module: its id must be the stale projects' module id.
+    pub(crate) fn stale_days_setting(mut self) -> Self {
+        self.days.push(fresher_core::STALE_PROJECTS_UNUSED_FOR.descriptor(self.id).unwrap());
         self
     }
 
@@ -187,7 +196,7 @@ impl TestModuleBuilder {
 
     pub(crate) fn build(self) -> TestModule {
         let locales = Locales { en: self.locales };
-        let mut descriptor = ModuleDescriptor::new(self.id, self.group, self.categories, vec![], locales).unwrap();
+        let mut descriptor = ModuleDescriptor::new(self.id, self.group, self.categories, self.days, locales).unwrap();
         for check in self.tool_checks {
             descriptor = descriptor.with_tool_check(check).unwrap();
         }

@@ -3,11 +3,12 @@
 //!
 //! A node: its name front-coded against the previous sibling (the shared prefix's length, then the rest), its flags,
 //! for a folder its child count and its folders not kept as nodes, its own file count and three sizes, its
-//! modification time as a delta from its parent's, its hits (interest, marker check, sibling bits, held bits), when it
-//! has hits its stamp (see `stamp`), its owner (0 for none, else the claim's index + 1), its access (one byte) and, for
-//! a root, its folder identity. Totals are not written: the reader sums them again. A node's own bytes are its total
-//! minus its children's and minus the shared bytes credited to it, so the reader's `freeze` credits the groups again
-//! and reaches the same totals.
+//! modification time and its newest change (its subtree's), each as a delta from its parent's, its hits (interest,
+//! marker check, sibling bits, held bits), when it has hits its stamp (see `stamp`), its owner (0 for none, else the
+//! claim's index + 1), its access (one byte) and, for a root, its folder identity. Totals are not written: the reader
+//! sums them again. A node's own bytes are its total minus its children's and minus the shared bytes credited to it,
+//! so the reader's `freeze` credits the groups again and reaches the same totals. A collapsed folder's newest change is
+//! its subtree's, so nothing of it is lost.
 //!
 //! A group: its device and id (as deltas from the previous group's), the bytes it counts once, its member count and
 //! the depth-first positions of the nodes that hold them (as deltas).
@@ -225,8 +226,9 @@ impl<'t> Layout<'t> {
             write_flags(out, flags);
         }
         write_sums(out, own);
-        let base = tree.node(node.parent).map_or(0, |parent| parent.modified);
-        write_i64(out, node.modified.wrapping_sub(base));
+        let parent = tree.node(node.parent);
+        write_i64(out, node.modified.wrapping_sub(parent.map_or(0, |parent| parent.modified)));
+        write_i64(out, node.newest.wrapping_sub(parent.map_or(0, |parent| parent.newest)));
         let hits = tree.hits(index);
         write_len(out, hits.len());
         for hit in hits {

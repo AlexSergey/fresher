@@ -33,6 +33,26 @@ pub fn min_size_of(choice: &str) -> ByteSize {
     ByteSize::new(bytes_of(choice).or_else(|| bytes_of(MIN_SIZE_DEFAULT)).unwrap_or_default())
 }
 
+/// The smallest folder the Largest screen's Folders lists: a choice of `500-mb`, `1-gb`, `5-gb` or `10-gb`.
+pub const LARGEST_FOLDER_MIN_SIZE: &str = "core.largest.folder-min-size";
+
+/// The choice of [`LARGEST_FOLDER_MIN_SIZE`] used when none is stored.
+const FOLDER_MIN_SIZE_DEFAULT: &str = "1-gb";
+
+/// The sizes of [`LARGEST_FOLDER_MIN_SIZE`]'s choices, in decimal units.
+const FOLDER_MIN_SIZES: [(&str, u64); 4] = [
+    ("500-mb", 500_000_000),
+    (FOLDER_MIN_SIZE_DEFAULT, 1_000_000_000),
+    ("5-gb", 5_000_000_000),
+    ("10-gb", 10_000_000_000),
+];
+
+/// The size a choice of [`LARGEST_FOLDER_MIN_SIZE`] stands for; an unknown choice is the default's.
+pub fn folder_min_size_of(choice: &str) -> ByteSize {
+    let bytes_of = |name: &str| FOLDER_MIN_SIZES.iter().find(|(known, _)| *known == name).map(|(_, bytes)| *bytes);
+    ByteSize::new(bytes_of(choice).or_else(|| bytes_of(FOLDER_MIN_SIZE_DEFAULT)).unwrap_or_default())
+}
+
 /// The opt-ins into the places the system guards: on, the next scan tries the place, and the system may ask the user
 /// once. Off by default.
 pub(crate) const ACCESS_OPT_INS: [&str; 4] =
@@ -84,6 +104,13 @@ pub(super) fn core_settings() -> Vec<SettingDescriptor> {
         SettingGroup::Scan,
         SettingEffect::Now,
     );
+    let folder_min_size = setting(
+        LARGEST_FOLDER_MIN_SIZE,
+        SettingKind::Choice { options: FOLDER_MIN_SIZES.iter().map(|(name, _)| *name).collect() },
+        SettingValue::Choice(FOLDER_MIN_SIZE_DEFAULT.into()),
+        SettingGroup::Scan,
+        SettingEffect::Now,
+    );
     let opt_in = |key: &str| {
         setting(
             key,
@@ -115,7 +142,7 @@ pub(super) fn core_settings() -> Vec<SettingDescriptor> {
         )
     };
     let agreement = [number(AGREEMENT_VERSION_KEY, 1000), number(AGREEMENT_ACCEPTED_AT, i64::MAX)];
-    [motion, roots, min_size]
+    [motion, roots, min_size, folder_min_size]
         .into_iter()
         .chain(ACCESS_OPT_INS.map(opt_in))
         .chain(ignored)
@@ -127,7 +154,7 @@ pub(super) fn core_settings() -> Vec<SettingDescriptor> {
 #[cfg(test)]
 mod tests {
     mod negative {
-        use super::super::{core_settings, min_size_of};
+        use super::super::{core_settings, folder_min_size_of, min_size_of};
         use crate::ByteSize;
 
         #[test]
@@ -185,6 +212,25 @@ mod tests {
         }
 
         #[test]
+        fn an_unknown_folder_size_choice_is_the_default() {
+            assert_eq!(folder_min_size_of("2-gb"), ByteSize::new(1_000_000_000));
+            assert_eq!(folder_min_size_of("100-mb"), folder_min_size_of("1-gb"));
+            assert_eq!(folder_min_size_of(""), folder_min_size_of("1-gb"));
+        }
+
+        #[test]
+        fn a_stored_folder_size_outside_the_choices_is_a_problem() {
+            let schema = crate::SettingsSchema::new([]).unwrap();
+            let stored = serde_json::from_str(r#"{"core.largest.folder-min-size":"2-gb"}"#).unwrap();
+
+            let resolved = schema.resolve(&stored);
+
+            assert_eq!(resolved.get("core.largest.folder-min-size"), Some(&crate::SettingValue::Choice("1-gb".into())));
+            let key = crate::SettingKey::new("core.largest.folder-min-size").unwrap();
+            assert_eq!(resolved.problems, [crate::SettingProblem::UnknownChoice { key }]);
+        }
+
+        #[test]
         fn a_module_setting_is_never_in_a_core_group() {
             let kind = crate::SettingKind::Switch;
             let module = crate::SettingDescriptor::new(
@@ -200,7 +246,7 @@ mod tests {
     }
 
     mod positive {
-        use super::super::{core_settings, min_size_of};
+        use super::super::{core_settings, folder_min_size_of, min_size_of};
         use crate::{SettingDescriptor, SettingEffect, SettingGroup, SettingKey, SettingValue};
 
         #[test]
@@ -227,6 +273,7 @@ mod tests {
                     at("core.motion", SettingGroup::General, SettingEffect::Now),
                     at("core.scan.roots", SettingGroup::Scan, SettingEffect::NextScan),
                     at("core.largest.min-size", SettingGroup::Scan, SettingEffect::Now),
+                    at("core.largest.folder-min-size", SettingGroup::Scan, SettingEffect::Now),
                     at("core.access.desktop", SettingGroup::Permissions, SettingEffect::NextScan),
                     at("core.access.documents", SettingGroup::Permissions, SettingEffect::NextScan),
                     at("core.access.downloads", SettingGroup::Permissions, SettingEffect::NextScan),
@@ -257,6 +304,27 @@ mod tests {
                     SettingValue::Choice("100-mb".into())
                 ))
             );
+        }
+
+        #[test]
+        fn folder_size_choices_are_decimal_bytes() {
+            let choices = ["500-mb", "1-gb", "5-gb", "10-gb"];
+            let sizes = choices.map(|choice| folder_min_size_of(choice).bytes());
+
+            assert_eq!(sizes, [500_000_000, 1_000_000_000, 5_000_000_000, 10_000_000_000]);
+        }
+
+        #[test]
+        fn the_folder_size_follows_the_smallest_size_in_the_scan_group() {
+            let keys: Vec<_> = core_settings().iter().map(|setting| setting.key().as_str().to_owned()).collect();
+            let at = keys.iter().position(|key| key == "core.largest.min-size").unwrap();
+            let folder = core_settings().into_iter().nth(at + 1).unwrap();
+
+            assert_eq!(folder.key().as_str(), "core.largest.folder-min-size");
+            assert_eq!(folder.group(), SettingGroup::Scan);
+            assert_eq!(folder.effect(), SettingEffect::Now);
+            assert_eq!(folder.default(), &SettingValue::Choice("1-gb".into()));
+            assert_eq!(folder.kind(), &crate::SettingKind::Choice { options: vec!["500-mb", "1-gb", "5-gb", "10-gb"] });
         }
 
         #[test]

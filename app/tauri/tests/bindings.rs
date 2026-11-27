@@ -37,8 +37,8 @@ mod support {
         PlaceRow, PlaceShare, PlaceView, RemainderReason, StorageMap, SummaryKind, SummaryPart, VolumeMap,
     };
     use fresher_core::{
-        ItemKind, KindCount, LargestPage, LargestQuery, LargestRow, LargestScreen, Offer, OwnPlace, OwnRow, PlaceCount,
-        Unchanged, Withheld,
+        FolderRow, FoldersPage, FoldersQuery, ItemKind, KindCount, LargestPage, LargestQuery, LargestRow,
+        LargestScreen, LeftFor, Offer, OwnPlace, OwnRow, PlaceCount, Unchanged, Withheld,
     };
     use fresher_sandbox::{AppState, DemoOutcome, DemoPlay, DemoWindow, NameMatch, Role, Scenario, Step, Target, Wait};
     use ts_rs::{Config, TS};
@@ -212,6 +212,10 @@ mod support {
             declaration::<PlaceCount>(config),
             declaration::<OwnPlace>(config),
             declaration::<OwnRow>(config),
+            declaration::<FoldersQuery>(config),
+            declaration::<FoldersPage>(config),
+            declaration::<FolderRow>(config),
+            declaration::<LeftFor>(config),
         ]
     }
 

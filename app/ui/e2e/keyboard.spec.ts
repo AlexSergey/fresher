@@ -273,6 +273,39 @@ test.describe('positive cases', () => {
     await expect(items).toBeHidden();
   });
 
+  test("Tab reaches each Show in Finder of Largest's Folders in order", async ({ page }) => {
+    await mockCore(page, SCRIPTS.largest);
+    await page.goto('/');
+    await scanButton(page).click();
+    await scanFinished(page);
+    await page.getByRole('navigation').getByRole('button', { name: 'Largest' }).click();
+    await page.getByRole('tab', { name: 'Folders' }).click();
+    const list = page.getByRole('list', { name: 'Folders left alone, largest first' });
+    await expect(list).toBeVisible();
+    const reveals = list.getByRole('button', { name: /^Show in Finder: / });
+    const names = await reveals.evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')));
+    expect(names).toStrictEqual([
+      'Show in Finder: Archive',
+      'Show in Finder: old-app',
+      'Show in Finder: Renders',
+      'Show in Finder: datasets',
+      'Show in Finder: old-export',
+    ]);
+
+    // From the tab, Tab walks down to the first row's button; then each Tab is the next row's.
+    await page.getByRole('tab', { name: 'Folders' }).focus();
+    const first = reveals.first();
+    for (let stop = 0; stop < 20 && !(await first.evaluate((element) => element === document.activeElement)); stop++) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(first).toBeFocused();
+    for (const name of names.slice(1)) {
+      await page.keyboard.press('Tab');
+      await expect(list.getByRole('button', { name: name ?? '' })).toBeFocused();
+    }
+    await expect(page.getByRole('list', { name: 'Folders and files, largest first' })).toHaveCount(0);
+  });
+
   test('a dialog opened by keyboard gives the focus back to its opener', async ({ page }) => {
     await openStory(page, 'Dialog/from-a-button');
     const opener = page.getByRole('button', { name: 'Review…' });

@@ -1,4 +1,7 @@
-/* The Largest screen: a column of the content's width under its header; the rows are the list's own. */
+/*
+ * The Largest screen: a column of the content's width under its header; the rows are the list's own. Folders puts its
+ * heading and rule, the home's bar in a card and the list's three tiles above its rows.
+ */
 @layer components {
   .content {
     display: grid;
@@ -58,5 +61,87 @@
   .more {
     display: flex;
     justify-content: center;
+  }
+
+  .lead {
+    display: grid;
+    gap: var(--space-1-5);
+  }
+
+  .heading {
+    margin: 0;
+    font-size: var(--type-callout-size);
+    font-weight: 600;
+  }
+
+  .card {
+    padding: var(--space-5) 22px;
+    border: 1px solid var(--tile-border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-card);
+  }
+
+  .caption {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  .caption b {
+    color: var(--text-primary);
+    font-size: var(--type-callout-size);
+  }
+
+  .tiles {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    gap: var(--space-3);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    list-style: none;
+  }
+
+  .fact {
+    display: grid;
+    align-items: center;
+    column-gap: var(--space-3);
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .factIcon {
+    display: flex;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    grid-row: 1 / 3;
+  }
+
+  .factIcon[data-tone='files-and-apps'] {
+    background-color: var(--part-files-and-apps-chip);
+    color: var(--part-files-and-apps);
+  }
+
+  .factIcon[data-tone='mac-os'] {
+    background-color: var(--part-mac-os-chip);
+    color: var(--part-mac-os);
+  }
+
+  .factIcon[data-tone='system-space'] {
+    background-color: var(--part-system-space-chip);
+    color: var(--part-system-space);
+  }
+
+  .factLabel {
+    color: var(--text-secondary);
+    font-size: var(--type-footnote-size);
+  }
+
+  .factValue {
+    font-size: var(--type-title-2-size);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    white-space: nowrap;
   }
 }

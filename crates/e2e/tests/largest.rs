@@ -223,33 +223,6 @@ mod flows {
         );
     }
 
-    pub(crate) fn a_picked_folder_goes_whole() {
-        let flow = scanned();
-        let bytes = fs::read(flow.path(crate::paths::OLD_FILE)).unwrap();
-        let home = flow.place(None).unwrap();
-        assert_eq!(row(&home, "Old projects"), (Offer::Offered, true));
-        let old = flow.place(Some(crate::paths::OLD_PROJECTS)).unwrap();
-        assert_eq!(row(&old, "archive"), (Offer::Offered, true));
-        let folder = old.rows.iter().find(|row| row.node.name == "archive").unwrap();
-        let picked = flow.engine.pick_own_item(folder.node.id).unwrap();
-
-        let view = flow.prepare(&[&picked]);
-
-        assert_eq!((view.summary.count, view.summary.highest), (1, DangerLevel::High));
-        let (_, events) = flow.clean(&view);
-        assert_eq!(flow.outcomes(&view, &events), [(crate::paths::OLD_FOLDER.to_owned(), ItemOutcome::Moved)]);
-        assert!(!flow.path(crate::paths::OLD_FOLDER).exists());
-        assert!(flow.path(crate::paths::OLD_PROJECTS).is_dir(), "the folder above stays");
-        let moved = contents(&flow.sandbox.trash());
-        let trashed: Vec<&Vec<u8>> = moved
-            .iter()
-            .filter(|(path, _)| path.to_string_lossy().ends_with("archive/data.bin"))
-            .map(|(_, bytes)| bytes)
-            .collect();
-        assert_eq!(trashed, [&bytes], "the folder is in the Trash whole: {:?}", moved.keys());
-        assert!(!flow.listed().iter().any(|path| path == crate::paths::OLD_FILE));
-    }
-
     /// A new engine on the same data folder: its first scan is a rescan of the cache the last scan left.
     pub(crate) fn a_rescan_after_a_restart_lists_the_same_rows() {
         let mut flow = scanned();
@@ -282,6 +255,16 @@ mod negative {
     use crate::paths::{
         APP, APP_FILE, CLAIMED, CLAIMED_FILE, HIDDEN_FILE, LIBRARY_FILE, LINK, SMALL, TRASH_FILE, VM_DISK,
     };
+
+    #[test]
+    fn a_plain_folder_is_not_picked() {
+        let flow = scanned();
+
+        let home = flow.place(None).unwrap();
+        assert_eq!(row(&home, "Old projects"), (Offer::Offered, true), "it still opens");
+        assert_not_pickable(&flow, crate::paths::OLD_PROJECTS);
+        assert_not_pickable(&flow, crate::paths::OLD_FOLDER);
+    }
 
     #[test]
     fn a_claimed_folder_is_never_listed() {
@@ -433,11 +416,6 @@ mod positive {
     #[test]
     fn a_picked_file_comes_back_by_put_back() {
         flows::a_picked_file_comes_back_by_put_back();
-    }
-
-    #[test]
-    fn a_picked_folder_goes_whole() {
-        flows::a_picked_folder_goes_whole();
     }
 
     #[test]

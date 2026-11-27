@@ -21,8 +21,12 @@ const FOLDER: OwnRow = {
   node: { ...IMAGE.node, kind: 'folder', name: 'Developer' },
   offer: { kind: 'withheld', reason: 'holds-explained' },
   opens: true,
-  picked: null,
 };
+
+// Whether the row keeps the empty place of a checkbox: a decoration with no role to query by.
+const keepsCheckboxPlace = (): boolean =>
+  // eslint-disable-next-line testing-library/no-node-access -- the place is empty decoration with no role to query by
+  document.querySelector('[class*="noCheckbox"]') !== null;
 
 const inList = (row: React.JSX.Element): void => {
   render(<div role="list">{row}</div>);
@@ -59,6 +63,18 @@ describe('OwnItemRow', () => {
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
+    it('a Browse row has no checkbox', () => {
+      inList(<OwnItemRow onReveal={vi.fn()} row={FOLDER} />);
+
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
+    it('a Browse row has no empty checkbox place', () => {
+      inList(<OwnItemRow onReveal={vi.fn()} row={FOLDER} />);
+
+      expect(keepsCheckboxPlace()).toBe(false);
+    });
+
     it('a folder says nothing of Scan when Scan explains none of it', () => {
       inList(<OwnItemRow checked={false} row={{ ...FOLDER, explained: { ...FOLDER.explained, allocated: 0 } }} />);
 
@@ -71,7 +87,9 @@ describe('OwnItemRow', () => {
       inList(<OwnItemRow checked={false} onToggle={vi.fn()} row={IMAGE} />);
 
       expect(screen.getByText('ubuntu-24.04.dmg')).toBeVisible();
-      expect(screen.getByText(/^Disk image · ~\/Downloads · Changed /u)).toBeVisible();
+      expect(screen.getByText('Disk image ·')).toBeVisible();
+      expect(screen.getByText(/^· Changed /u)).toBeVisible();
+      expect(screen.getByText('~/Downloads', { selector: '[aria-hidden]' })).toBeInTheDocument();
       expect(screen.getAllByText('12 GB')).toHaveLength(2);
     });
 
@@ -104,6 +122,40 @@ describe('OwnItemRow', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
       expect(onOpen).toHaveBeenCalledOnce();
+    });
+
+    it('a Browse row shows why it does not open', () => {
+      inList(
+        <OwnItemRow
+          onReveal={vi.fn()}
+          row={{ ...FOLDER, offer: { kind: 'withheld', reason: 'trash' }, opens: false }}
+        />,
+      );
+
+      expect(screen.getByText(/Trash/u)).toBeVisible();
+      expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
+    });
+
+    it('a Browse row calls onReveal from Show in Finder', () => {
+      const onReveal = vi.fn();
+      inList(<OwnItemRow onReveal={onReveal} row={FOLDER} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Show in Finder: Developer' }));
+
+      expect(onReveal).toHaveBeenCalledOnce();
+      expect(screen.getByText('Show in Finder')).toBeVisible();
+    });
+
+    it('a withheld Files row keeps the empty checkbox place', () => {
+      inList(<OwnItemRow row={PART} />);
+
+      expect(keepsCheckboxPlace()).toBe(true);
+    });
+
+    it('a Files row still has its checkbox', () => {
+      inList(<OwnItemRow checked={false} onToggle={vi.fn()} row={IMAGE} />);
+
+      expect(screen.getByRole('checkbox')).toBeVisible();
     });
 
     it('a withheld folder keeps its Open button and says why', () => {

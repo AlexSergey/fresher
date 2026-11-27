@@ -5,10 +5,11 @@ use std::path::{Path, PathBuf};
 
 use fresher_core::{
     AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION_KEY, Acceptance, BlockedReason, ByteSize, CategoryId, CommandError, Event,
-    Finding, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IgnoredEntry, LARGEST_MIN_SIZE,
-    ModuleGroup, ModuleId, ModuleSettings, ResolvedSettings, SCAN_ROOTS, SettingDescriptor, SettingEffect, SettingKey,
-    SettingUpdate, SettingValue, SettingsFile, SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings,
-    Subject, Timestamp, min_size_of,
+    Finding, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS, IgnoredEntry, LARGEST_FOLDER_MIN_SIZE,
+    LARGEST_MIN_SIZE, ModuleGroup, ModuleId, ModuleSettings, ResolvedSettings, SCAN_ROOTS, STALE_PROJECTS_MODULE,
+    STALE_PROJECTS_UNUSED_FOR, SettingDescriptor, SettingEffect, SettingKey, SettingUpdate, SettingValue, SettingsFile,
+    SettingsSchema, SettingsStore, SettingsView, StoreError, StoredSettings, Subject, Timestamp, folder_min_size_of,
+    min_size_of,
 };
 
 use crate::Registry;
@@ -258,6 +259,23 @@ impl Settings {
         }
     }
 
+    /// The smallest folder the Largest screen's Folders lists; a choice that is not one is the default's.
+    pub(crate) fn largest_folder_min_size(&self) -> ByteSize {
+        match self.resolved.get(LARGEST_FOLDER_MIN_SIZE) {
+            Some(SettingValue::Choice(choice)) => folder_min_size_of(choice),
+            _ => folder_min_size_of(""),
+        }
+    }
+
+    /// The days without a change after which a project is stale: the stale projects module's setting, its default
+    /// when the module's id does not parse.
+    pub(crate) fn stale_days(&self) -> u32 {
+        match ModuleId::new(STALE_PROJECTS_MODULE) {
+            Ok(id) => STALE_PROJECTS_UNUSED_FOR.days(&self.module(id)),
+            Err(_) => STALE_PROJECTS_UNUSED_FOR.default_days(),
+        }
+    }
+
     pub(crate) fn module(&self, module: ModuleId) -> ModuleSettings {
         self.resolved.module(module)
     }
@@ -364,6 +382,20 @@ mod tests {
 
     fn home() -> SettingValue {
         SettingValue::Folders(vec![PathBuf::from("~")])
+    }
+
+    /// The settings of a schema that holds the stale projects' days, over `stored`.
+    fn stale_settings(stored: &[(&str, serde_json::Value)]) -> super::Settings {
+        use fresher_core::{
+            Locales, ModuleDescriptor, ModuleGroup, ModuleId, STALE_PROJECTS_MODULE, STALE_PROJECTS_UNUSED_FOR,
+            SettingsSchema,
+        };
+
+        let id = ModuleId::new(STALE_PROJECTS_MODULE).unwrap();
+        let days = vec![STALE_PROJECTS_UNUSED_FOR.descriptor(id).unwrap()];
+        let module = ModuleDescriptor::new(id, ModuleGroup::Development, vec![], days, Locales { en: "{}" }).unwrap();
+        let schema = SettingsSchema::new([&module]).unwrap();
+        super::Settings::load(schema, &MemorySettings::with(stored))
     }
 
     mod negative {
@@ -531,6 +563,33 @@ mod tests {
         }
 
         #[test]
+        fn stale_days_out_of_range_take_the_nearest_limit() {
+            let key = key("stale-projects.unused-for-days");
+            let mut settings = super::stale_settings(&[]);
+
+            settings.take(&key, &SettingValue::Number(1));
+            assert_eq!(settings.stale_days(), 30);
+            settings.take(&key, &SettingValue::Number(100_000));
+            assert_eq!(settings.stale_days(), 3650);
+        }
+
+        #[test]
+        fn a_stored_folder_size_outside_the_choices_is_the_default() {
+            let (engine, _) = engine(MemorySettings::with(&[("core.largest.folder-min-size", json!("2-gb"))]));
+
+            assert_eq!(engine.settings().unwrap().problems.len(), 1);
+            assert_eq!(
+                super::super::Settings::load(
+                    fresher_core::SettingsSchema::new([]).unwrap(),
+                    &MemorySettings::with(&[("core.largest.folder-min-size", json!("2-gb"))])
+                )
+                .largest_folder_min_size()
+                .bytes(),
+                1_000_000_000
+            );
+        }
+
+        #[test]
         fn a_poisoned_settings_lock_is_an_internal_error() {
             let (engine, _) = engine(MemorySettings::default());
             poison(&engine.shared.settings);
@@ -551,6 +610,35 @@ mod tests {
         use super::{engine, key, update};
         use crate::testing::{Fixture, MemorySettings, START, ScriptedWalk, scan};
         use fresher_core::SettingsFile;
+
+        #[test]
+        fn stale_days_default_to_a_year() {
+            assert_eq!(super::stale_settings(&[]).stale_days(), 365);
+        }
+
+        #[test]
+        fn stale_days_follow_the_stale_projects_setting() {
+            let stored = [("stale-projects.unused-for-days", json!(90))];
+
+            assert_eq!(super::stale_settings(&stored).stale_days(), 90);
+        }
+
+        #[test]
+        fn the_folder_size_follows_its_setting() {
+            let sized = |choice: &str| {
+                let stored = MemorySettings::with(&[("core.largest.folder-min-size", json!(choice))]);
+                let schema = fresher_core::SettingsSchema::new([]).unwrap();
+                super::super::Settings::load(schema, &stored).largest_folder_min_size().bytes()
+            };
+            let unset = super::super::Settings::load(
+                fresher_core::SettingsSchema::new([]).unwrap(),
+                &MemorySettings::default(),
+            );
+
+            assert_eq!(unset.largest_folder_min_size().bytes(), 1_000_000_000);
+            assert_eq!(sized("500-mb"), 500_000_000);
+            assert_eq!(sized("10-gb"), 10_000_000_000);
+        }
 
         #[test]
         fn reset_keeps_the_acceptance() {

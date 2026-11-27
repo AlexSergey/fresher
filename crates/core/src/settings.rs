@@ -15,9 +15,9 @@ use ts_rs::TS;
 
 pub use core_schema::{
     AGREEMENT_ACCEPTED_AT, AGREEMENT_VERSION_KEY, IGNORE_CATEGORIES, IGNORE_GROUPS, IGNORE_MODULES, IGNORE_PATHS,
-    LARGEST_MIN_SIZE, SCAN_ROOTS, min_size_of,
+    LARGEST_FOLDER_MIN_SIZE, LARGEST_MIN_SIZE, SCAN_ROOTS, folder_min_size_of, min_size_of,
 };
-pub use days::DaySetting;
+pub use days::{DaySetting, STALE_PROJECTS_MODULE, STALE_PROJECTS_UNUSED_FOR};
 pub use schema::{ModuleSettings, ResolvedSettings, SchemaError, SettingsSchema};
 
 use crate::{ModuleGroup, ModuleId, TextKey};
